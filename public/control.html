@@ -80,6 +80,18 @@
     #log .r { color: #fff; font-weight: 800; }
     #log .t { color: var(--muted); white-space: nowrap; }
 
+    .match .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .match .phase { font-size: 12px; font-weight: 800; color: var(--gold); letter-spacing: .5px; }
+    .match .clock { font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .match .clock.urgent { color: #ff5d5d; }
+    .match .wins { text-align: right; font-weight: 800; }
+    .match .wins small { display: block; color: #ffb13b; font-size: 13px; min-height: 16px; }
+    .tbtns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .tbtns button { padding: 12px 4px; border-radius: 12px; border: 1px solid var(--line); background: #0e1324; color: var(--text); font-weight: 800; }
+    .tbtns .big { grid-column: span 3; padding: 14px; font-size: 18px; border: 0; background: #2ecc71; color: #062; }
+    .tbtns .big.pause { background: #ff9a3c; color: #311; }
+    .link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 8px 0 0; font-size: 13px; }
+
     #toast {
       position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 140%); transition: transform .2s;
       padding: 12px 20px; border-radius: 999px; background: #2ecc71; color: #062; font-weight: 900; z-index: 10;
@@ -94,6 +106,30 @@
     <div class="team messi"><span id="nameMessi">MESSI</span><b id="scoreMessi">0</b></div>
     <div class="mid">VS<i id="dot" class="dot" title="connection"></i></div>
     <div class="team ronaldo"><span id="nameRonaldo">RONALDO</span><b id="scoreRonaldo">0</b></div>
+  </div>
+
+  <div class="card match">
+    <div class="top">
+      <div>
+        <div class="phase" id="phase">KICK-OFF SOON</div>
+        <div class="clock" id="clock">3:00</div>
+      </div>
+      <div class="wins">
+        <div>🏆 <span id="winsText">0 - 0</span></div>
+        <small id="streakText"></small>
+      </div>
+    </div>
+    <div class="tbtns">
+      <button class="big" id="tToggle" type="button">▶ Start</button>
+      <button type="button" data-add="-30">−30s</button>
+      <button type="button" data-add="30">+30s</button>
+      <button type="button" data-add="60">+1 min</button>
+      <button type="button" id="tEnd">⏹ End round</button>
+      <button type="button" id="tReset">⟲ Reset timer</button>
+      <button type="button" id="tWins">🏆 Reset wins</button>
+    </div>
+    <label class="small" style="margin-top:12px">Round length</label>
+    <div class="qty" id="durations"></div>
   </div>
 
   <div class="card">

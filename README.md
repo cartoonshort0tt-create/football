@@ -9,8 +9,12 @@ the other goal.
 - **Ronaldo** — cartoon Real Madrid white (#7), attacks the **bottom** goal
 - **1 coin = 1 goal.** Gifts up to 10 coins drop as separate balls; bigger gifts drop one
   glowing **mega ball** worth all the coins (e.g. Hand Hearts = +100 in one shot).
+- **3-minute rounds** with a big match clock, referee whistles, a red 5-4-3-2-1 countdown,
+  and a **FULL TIME** winner card. The next round starts automatically after 12 seconds.
+- **Win count + winning streak** (🏆 3 WINS · 🔥 3 STREAK) under each team.
+- Stadium with mowed-grass pitch, floodlights, scrolling LED boards, cheering fans waving scarves.
 - Goal banners, combos (`GOAL x5!`), confetti, crowd noise, "SIUUU!" celebrations.
-- The score is saved, so restarting the PC keeps it.
+- Score, wins and streak are saved, so restarting the PC keeps them.
 
 ## Setup (one time)
 
@@ -36,6 +40,20 @@ the other goal.
 
 ## Using the phone controller
 
+**Match clock** (top card)
+- **▶ Start / ⏸ Pause** — kicks off the round (the clock waits for you on the first round).
+- **−30s / +30s / +1 min** — change the time left.
+- **⏹ End round** — finish now and declare the winner.
+- **⟲ Reset timer** — back to the full round length, not started.
+- **🏆 Reset wins** — clear the win count and streak.
+- **Round length** — 1, 2, 3, 5 or 10 minutes (applies to the next round).
+
+When time runs out, the team with more goals wins the round (+1 win, streak grows).
+A draw gives no win and ends any streak. Gifts sent during the full-time card
+count for the next round.
+
+**Gifts**
+
 - **Tap a gift** under **MESSI** or **RONALDO** → balls spawn for that side.
 - **x2 / x5 / x10 / x20** — for gift streaks (e.g. Rose x10). Resets to x1 after each tap.
 - **Viewer name** (optional) — shown on screen as "from @name". Clears after each tap.
@@ -49,6 +67,9 @@ the other goal.
 | --- | --- |
 | F | Fullscreen |
 | M | Mute / unmute |
+| S | Start / pause the match clock |
+| E | End the round now |
+| R | Reset the clock |
 | 1 / 2 | Test: one ball for Messi / Ronaldo |
 | Q / W | Test: 50-coin mega ball for Messi / Ronaldo |
 
@@ -58,7 +79,10 @@ the other goal.
 - `gifts` — the buttons on the phone: `name`, `emoji`, `coins`. TikTok gift prices change
   now and then, so check them in the app and edit here. Restart the server after editing.
 - `megaBallThreshold` — gifts above this many coins become one mega ball (default 10).
-- `tip` — the yellow line under the scoreboard.
+- `roundSeconds` — round length (default 180 = 3 minutes).
+- `intermissionSeconds` — how long the FULL TIME card shows (default 12).
+- `autoStartNextRound` — `true` starts the next round by itself; `false` waits for you to press Start.
+- `boardText` — the scrolling text on the LED boards around the pitch.
 - `port` — change if 3000 is taken.
 
 Scores are stored in `data/scores.json` (delete it or use **Reset score** to start fresh).

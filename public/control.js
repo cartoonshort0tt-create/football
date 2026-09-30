@@ -3,9 +3,12 @@
 
   const $ = (id) => document.getElementById(id);
   const QTY_OPTIONS = [1, 2, 5, 10, 20];
+  const DURATIONS = [60, 120, 180, 300, 600]; // seconds
   let config = { teams: { messi: { name: 'MESSI' }, ronaldo: { name: 'RONALDO' } }, gifts: [] };
   let qty = 1;
   let toastTimer = 0;
+  let match = null;
+  let matchAt = 0;
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -106,8 +109,60 @@
     $('customCoins').value = '';
   }
 
+  // ---------- Match clock ----------
+  function fmt(ms) {
+    const total = Math.ceil(ms / 1000);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  function matchLeft() {
+    const live = match.phase === 'running' || match.phase === 'intermission';
+    return Math.max(0, match.remaining - (live ? performance.now() - matchAt : 0));
+  }
+
+  function renderClock() {
+    if (!match) return;
+    const left = matchLeft();
+    const labels = {
+      ready: 'KICK-OFF SOON',
+      running: `ROUND ${match.round} · LIVE`,
+      paused: `ROUND ${match.round} · PAUSED`,
+      intermission: `FULL TIME · NEXT ROUND IN ${Math.ceil(left / 1000)}s`,
+    };
+    $('phase').textContent = labels[match.phase] || '';
+    $('clock').textContent = match.phase === 'intermission' ? '0:00' : fmt(left);
+    $('clock').classList.toggle('urgent', match.phase === 'running' && left <= 10000);
+  }
+
+  function showMatch(m) {
+    match = m;
+    matchAt = performance.now();
+    const running = m.phase === 'running';
+    const toggle = $('tToggle');
+    toggle.textContent = running ? '⏸ Pause' : m.phase === 'paused' ? '▶ Resume' : m.phase === 'intermission' ? '▶ Start next round now' : '▶ Start';
+    toggle.classList.toggle('pause', running);
+    $('winsText').textContent = `${teamName('messi')} ${m.wins.messi} - ${m.wins.ronaldo} ${teamName('ronaldo')}`;
+    $('streakText').textContent = m.streak.team && m.streak.count >= 2 ? `🔥 ${teamName(m.streak.team)} x${m.streak.count} streak` : '';
+    const box = $('durations');
+    box.textContent = '';
+    for (const sec of DURATIONS) {
+      const b = el('button', m.duration === sec * 1000 ? 'on' : '', sec < 60 ? `${sec}s` : `${sec / 60} min`);
+      b.type = 'button';
+      b.onclick = () => timer({ action: 'duration', seconds: sec });
+      box.appendChild(b);
+    }
+    renderClock();
+  }
+
+  function timer(body) {
+    return post('/api/timer', body);
+  }
+
+  setInterval(renderClock, 250);
+
   // ---------- Live state ----------
   function showState(msg) {
+    if (msg.match) showMatch(msg.match);
     if (msg.scores) {
       $('scoreMessi').textContent = msg.scores.messi;
       $('scoreRonaldo').textContent = msg.scores.ronaldo;
@@ -144,6 +199,17 @@
   }
 
   // ---------- Wire up ----------
+  $('tToggle').onclick = () => timer({ action: 'toggle' });
+  $('tEnd').onclick = () => {
+    if (confirm('End this round now and declare the winner?')) timer({ action: 'end' });
+  };
+  $('tReset').onclick = () => timer({ action: 'reset' });
+  $('tWins').onclick = () => {
+    if (confirm('Reset the win count and streak?')) timer({ action: 'resetWins' });
+  };
+  for (const b of document.querySelectorAll('[data-add]')) {
+    b.onclick = () => timer({ action: 'add', seconds: Number(b.dataset.add) });
+  }
   $('customMessi').onclick = () => sendCustom('messi');
   $('customRonaldo').onclick = () => sendCustom('ronaldo');
   $('undo').onclick = async () => {

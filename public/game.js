@@ -4,7 +4,8 @@
   // ---------- Layout: logical 1080x1920 portrait (TikTok 9:16), scaled to fit ----------
   const W = 1080;
   const H = 1920;
-  const PITCH = { x: 80, y: 360, w: 920, h: 1460 };
+  const HUD_H = 250;
+  const PITCH = { x: 100, y: 430, w: 880, h: 1380 };
   const MID_Y = PITCH.y + PITCH.h / 2;
   const GOAL_HALF = 150; // half width of the goal mouth
   const GOAL_HEIGHT = 110; // crossbar height (pseudo-3D)
@@ -34,6 +35,16 @@
   const ATTACK = { messi: 'top', ronaldo: 'bottom' };
   const OPP = { messi: 'ronaldo', ronaldo: 'messi' };
 
+  // LED advertising boards around the pitch.
+  const BOARDS = [
+    { x: 76, y: PITCH.y - 62, w: 308, h: 28, team: 'messi' },
+    { x: W - 384, y: PITCH.y - 62, w: 308, h: 28, team: 'ronaldo' },
+    { x: 76, y: PITCH.y + PITCH.h + 34, w: 296, h: 28, team: 'messi' },
+    { x: W - 372, y: PITCH.y + PITCH.h + 34, w: 296, h: 28, team: 'ronaldo' },
+    { x: 46, y: PITCH.y - 62, w: 26, h: PITCH.h + 124, team: 'messi', vertical: true },
+    { x: W - 72, y: PITCH.y - 62, w: 26, h: PITCH.h + 124, team: 'ronaldo', vertical: true },
+  ];
+
   let CONFIG = {
     teams: {
       messi: { name: 'MESSI', number: '10', celebrate: '¡VAMOS!' },
@@ -41,6 +52,7 @@
     },
     megaBallThreshold: 10,
     tip: '',
+    boardText: '⚽ MESSI vs RONALDO ⚽  SEND A GIFT TO SCORE FOR YOUR TEAM!',
   };
 
   // ---------- Helpers ----------
@@ -49,8 +61,26 @@
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const easeOutBack = (t) => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2);
 
+  // Seeded random so the pre-rendered grass texture is identical after every resize.
+  function seeded(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function formatTime(ms) {
+    const total = Math.ceil(ms / 1000);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  }
+
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
+  const mainCtx = canvas.getContext('2d');
+  const bg = document.createElement('canvas'); // pre-rendered stadium + pitch
+  const bgCtx = bg.getContext('2d');
+  let ctx = mainCtx; // swapped to bgCtx while pre-rendering
 
   function rr(x, y, w, h, r) {
     ctx.beginPath();
@@ -83,6 +113,14 @@
     ctx.fillText(text, x, y);
   }
 
+  function teamFill(team, x0, x1) {
+    if (team !== 'messi') return '#FFFFFF';
+    const g = ctx.createLinearGradient(x0, 0, x1, 0);
+    g.addColorStop(0, '#004D98');
+    g.addColorStop(1, '#A50044');
+    return g;
+  }
+
   // ---------- Sound (Web Audio, no files needed) ----------
   const Sound = {
     ctx: null,
@@ -104,6 +142,21 @@
     ready() {
       return this.ctx && !this.muted;
     },
+    tone(freq, dur, vol, type = 'sine') {
+      if (!this.ready()) return;
+      const c = this.ctx;
+      const t = c.currentTime;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(c.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    },
     kick() {
       if (!this.ready()) return;
       const c = this.ctx;
@@ -118,6 +171,32 @@
       o.start(t);
       o.stop(t + 0.16);
     },
+    // Referee whistle: one blast per entry (seconds).
+    whistle(blasts) {
+      if (!this.ready()) return;
+      const c = this.ctx;
+      let t = c.currentTime;
+      for (const d of blasts) {
+        const o = c.createOscillator();
+        const lfo = c.createOscillator();
+        const depth = c.createGain();
+        const g = c.createGain();
+        o.frequency.value = 2750;
+        lfo.frequency.value = 34;
+        depth.gain.value = 170;
+        lfo.connect(depth).connect(o.frequency);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.13, t + 0.02);
+        g.gain.setValueAtTime(0.13, t + d - 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g).connect(c.destination);
+        o.start(t);
+        lfo.start(t);
+        o.stop(t + d + 0.02);
+        lfo.stop(t + d + 0.02);
+        t += d + 0.12;
+      }
+    },
     goal(big) {
       if (!this.ready()) return;
       const c = this.ctx;
@@ -125,7 +204,6 @@
       if (t - this.lastGoal < 0.15) return;
       this.lastGoal = t;
       const len = big ? 2.6 : 1.4;
-      // crowd roar
       const src = c.createBufferSource();
       src.buffer = this.noise;
       src.loop = true;
@@ -140,7 +218,6 @@
       src.connect(f).connect(g).connect(c.destination);
       src.start(t);
       src.stop(t + len);
-      // stadium horn
       for (const freq of big ? [392, 494, 587] : [440, 554]) {
         const o = c.createOscillator();
         const og = c.createGain();
@@ -170,8 +247,16 @@
   let banner = null;
   let now = 0;
 
+  const match = {
+    phase: 'ready', duration: 180000, remaining: 180000, round: 1,
+    wins: { messi: 0, ronaldo: 0 }, streak: { team: null, count: 0 },
+    lastResult: null, autoNextRound: true, recvAt: 0,
+  };
+  let resultT = 99; // seconds since full time (drives the result card animation)
+  let lastBeep = 0;
+
   function makePlayer(team) {
-    const home = team === 'messi' ? { x: W / 2, y: MID_Y + 340 } : { x: W / 2, y: MID_Y - 300 };
+    const home = team === 'messi' ? { x: W / 2, y: MID_Y + 320 } : { x: W / 2, y: MID_Y - 300 };
     return {
       team, home, x: home.x, y: home.y, face: 1, state: 'idle', stateT: 0,
       anim: Math.random() * 10, ball: null, kickT: 0, kicked: false, moving: false,
@@ -198,14 +283,24 @@
     return Math.min(3.2, 1 + Math.max(0, pending(team) - 1) * 0.15);
   }
 
+  function timeLeft() {
+    const live = match.phase === 'running' || match.phase === 'intermission';
+    return Math.max(0, match.remaining - (live ? performance.now() - match.recvAt : 0));
+  }
+
   // ---------- Server events ----------
   function setScores(scores) {
     if (!scores) return;
     for (const t of ['messi', 'ronaldo']) serverScores[t] = Number(scores[t]) || 0;
   }
 
+  function setMatch(m) {
+    if (!m) return;
+    Object.assign(match, m);
+    match.recvAt = performance.now();
+  }
+
   function onSpawn(msg) {
-    setScores(msg.scores);
     const team = msg.team;
     const count = msg.count;
     const values = count > (CONFIG.megaBallThreshold || 10) ? [count] : Array(count).fill(1);
@@ -219,29 +314,71 @@
   }
 
   function onUndo(msg) {
-    setScores(msg.scores);
     spawnQueue = spawnQueue.filter((q) => q.id !== msg.id);
     balls = balls.filter((b) => b.id !== msg.id || b.scored);
   }
 
-  function onReset(msg) {
-    setScores(msg.scores);
+  function clearField() {
     spawnQueue = [];
+    balls = balls.filter((b) => b.scored);
+    for (const t of ['messi', 'ronaldo']) {
+      shown[t] = 0;
+      lastDue[t] = 0;
+      combo[t].n = 0;
+      players[t].ball = null;
+      if (players[t].state === 'kick') players[t].state = 'idle';
+    }
+  }
+
+  function onReset() {
+    clearField();
     balls = [];
     floats = [];
     banner = null;
     for (const t of ['messi', 'ronaldo']) {
-      shown[t] = 0;
-      lastDue[t] = 0;
-      Object.assign(players[t], { state: 'idle', ball: null, x: players[t].home.x, y: players[t].home.y });
+      Object.assign(players[t], { state: 'idle', x: players[t].home.x, y: players[t].home.y });
+    }
+  }
+
+  function onMatchEvent(msg) {
+    switch (msg.event) {
+      case 'start':
+        banner = { team: null, text: `KICK-OFF! ROUND ${match.round}`, t: 0, big: false };
+        Sound.whistle([0.6]);
+        break;
+      case 'resume':
+      case 'pause':
+        Sound.whistle([0.25]);
+        break;
+      case 'end': {
+        Sound.whistle([0.3, 0.3, 0.9]);
+        clearField();
+        banner = null;
+        resultT = 0;
+        const r = match.lastResult;
+        const stay = (match.remaining || 10000) / 1000;
+        if (r && r.winner !== 'draw') {
+          Object.assign(players[r.winner], { state: 'celebrate', stateT: stay });
+          Object.assign(players[OPP[r.winner]], { state: 'sad', stateT: stay });
+          cheer[r.winner] = 1;
+          Sound.goal(true);
+        } else {
+          for (const t of ['messi', 'ronaldo']) Object.assign(players[t], { state: 'sad', stateT: 2.5 });
+        }
+        break;
+      }
+      default:
+        break;
     }
   }
 
   function handle(msg) {
-    if (msg.type === 'state') setScores(msg.scores);
-    else if (msg.type === 'spawn') onSpawn(msg);
+    setMatch(msg.match);
+    setScores(msg.scores);
+    if (msg.type === 'spawn') onSpawn(msg);
     else if (msg.type === 'undo') onUndo(msg);
     else if (msg.type === 'reset') onReset(msg);
+    else if (msg.type === 'match') onMatchEvent(msg);
   }
 
   function connect() {
@@ -267,11 +404,11 @@
   function makeBall(q) {
     const r = q.value > 1 ? Math.min(58, BALL_R + 16 * Math.log10(q.value)) : BALL_R;
     const [y0, y1] = q.team === 'messi'
-      ? [MID_Y + 130, PITCH.y + PITCH.h - 240]
-      : [PITCH.y + 240, MID_Y - 130];
+      ? [MID_Y + 130, PITCH.y + PITCH.h - 230]
+      : [PITCH.y + 230, MID_Y - 130];
     return {
       id: q.id, team: q.team, value: q.value, r,
-      x: rand(PITCH.x + 140, PITCH.x + PITCH.w - 140), y: rand(y0, y1), z: 1100,
+      x: rand(PITCH.x + 130, PITCH.x + PITCH.w - 130), y: rand(y0, y1), z: 1100,
       vx: 0, vy: 0, vz: 0, rot: rand(0, 6), state: 'drop', bounced: false,
       scored: false, netT: 0, alpha: 1, shot: null,
     };
@@ -493,12 +630,28 @@
       const a = rand(0, Math.PI * 2);
       const s = rand(200, 950);
       particles.push({
-        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 350,
+        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 350, g: 900,
         rot: rand(0, 6), vr: rand(-12, 12), w: rand(8, 16), h: rand(5, 10),
         c: cols[i % cols.length], life: rand(1.2, 2.2),
       });
     }
-    if (particles.length > 900) particles.splice(0, particles.length - 900);
+    trimParticles();
+  }
+
+  // Slow confetti falling from the top of the pitch (full-time celebration).
+  function rain(team, n) {
+    const cols = KITS[team].confetti;
+    for (let i = 0; i < n; i++) {
+      particles.push({
+        x: rand(PITCH.x, PITCH.x + PITCH.w), y: rand(HUD_H - 20, HUD_H + 40), vx: rand(-40, 40), vy: rand(80, 180), g: 60,
+        rot: rand(0, 6), vr: rand(-8, 8), w: rand(10, 18), h: rand(6, 10), c: pick(cols), life: rand(4, 7),
+      });
+    }
+    trimParticles();
+  }
+
+  function trimParticles() {
+    if (particles.length > 1000) particles.splice(0, particles.length - 1000);
   }
 
   function addFloat(msg) {
@@ -517,18 +670,26 @@
   // ---------- Crowd ----------
   const crowd = [];
   (function buildCrowd() {
-    const cols = {
-      messi: ['#A50044', '#004D98', '#EDBB00', '#A50044', '#004D98'],
-      ronaldo: ['#FFFFFF', '#D4AF37', '#E8E8EE', '#FFFFFF', '#1B2A6B'],
+    const skins = ['#f1c29b', '#e0ac7e', '#c68b5e', '#8d5a3b', '#f6d3b3'];
+    const shirts = {
+      messi: ['#A50044', '#004D98', '#004D98', '#A50044', '#EDBB00'],
+      ronaldo: ['#FFFFFF', '#FFFFFF', '#E9E9EF', '#D4AF37', '#1B2A6B'],
     };
-    const add = (x, y, team) => crowd.push({ x: x + rand(-3, 3), y: y + rand(-2, 2), team, c: pick(cols[team]), ph: rand(0, 6) });
-    for (let y = 222; y < H; y += 24) {
-      for (let x = 14; x < PITCH.x - 30; x += 24) add(x, y, 'messi');
-      for (let x = W - 14; x > PITCH.x + PITCH.w + 30; x -= 24) add(x, y, 'ronaldo');
+    const add = (x, y, team) => crowd.push({
+      x, y, team, shirt: pick(shirts[team]), skin: pick(skins), ph: rand(0, 6), scarf: Math.random() < 0.35,
+    });
+    // main stand behind the top goal
+    for (let y = 272, row = 0; y < PITCH.y - 72; y += 20, row++) {
+      for (let x = 12 + (row % 2) * 10; x < W; x += 20) add(x, y, x < W / 2 ? 'messi' : 'ronaldo');
     }
-    for (let y = 222; y < PITCH.y - 50; y += 24) {
-      for (let x = 60; x < W / 2 - GOAL_HALF - 30; x += 24) add(x, y, 'messi');
-      for (let x = W - 60; x > W / 2 + GOAL_HALF + 30; x -= 24) add(x, y, 'ronaldo');
+    // side stands
+    for (let y = PITCH.y - 40; y < H - 40; y += 24) {
+      add(22, y, 'messi');
+      add(W - 22, y, 'ronaldo');
+    }
+    // lower stand
+    for (let y = PITCH.y + PITCH.h + 82, row = 0; y < H + 6; y += 20, row++) {
+      for (let x = 12 + (row % 2) * 10; x < W; x += 20) add(x, y, x < W / 2 ? 'messi' : 'ronaldo');
     }
   })();
 
@@ -541,14 +702,14 @@
     updatePlayer(players.ronaldo, dt);
 
     for (const p of particles) {
-      p.vy += 900 * dt;
+      p.vy += p.g * dt;
       p.vx *= Math.exp(-1.5 * dt);
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.rot += p.vr * dt;
       p.life -= dt;
     }
-    particles = particles.filter((p) => p.life > 0);
+    particles = particles.filter((p) => p.life > 0 && p.y < H + 20);
     for (const f of floats) f.t += dt;
     floats = floats.filter((f) => f.t < 3);
     for (const g of Object.values(GOALS)) g.shake = Math.max(0, g.shake - dt * 1.8);
@@ -558,39 +719,51 @@
     }
     if (banner) {
       banner.t += dt;
-      if (banner.t > (banner.big ? 2.2 : 1.4)) banner = null;
+      if (banner.t > (banner.big ? 2.2 : 1.6)) banner = null;
+    }
+
+    // match clock effects
+    resultT += dt;
+    if (match.phase === 'running') {
+      const secs = Math.ceil(timeLeft() / 1000);
+      if (secs <= 5 && secs >= 1 && secs !== lastBeep) Sound.tone(880, 0.12, 0.15);
+      lastBeep = secs;
+    } else {
+      lastBeep = 0;
+    }
+    const r = match.lastResult;
+    if (match.phase === 'intermission' && r && r.winner !== 'draw') {
+      cheer[r.winner] = Math.max(cheer[r.winner], 0.6);
+      if (Math.random() < dt * 30) rain(r.winner, 2);
     }
   }
 
-  // ---------- Drawing ----------
-  function drawStadium() {
+  // ---------- Static background (pre-rendered on resize) ----------
+  function drawStands() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#111a33');
-    g.addColorStop(1, '#070a14');
+    g.addColorStop(0, '#0e1633');
+    g.addColorStop(1, '#060913');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    for (const c of crowd) {
-      const jump = (Math.sin(now * 14 + c.ph) * 0.5 + 0.5) * (2 + cheer[c.team] * 14);
-      ctx.fillStyle = c.c;
-      ctx.beginPath();
-      ctx.arc(c.x, c.y + 10 - jump, 9, Math.PI, 0);
-      ctx.fill();
-      ctx.fillStyle = '#e0b48f';
-      circle(c.x, c.y - jump, 6);
-      ctx.fill();
+    // seat rows
+    for (let y = HUD_H, i = 0; y < H; y += 20, i++) {
+      ctx.fillStyle = i % 2 ? '#1a2342' : '#141c36';
+      ctx.fillRect(0, y, W, 20);
     }
+    // stand divider stairs
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(W / 2 - 3, HUD_H, 6, PITCH.y - 72 - HUD_H);
+    // roof shadow under the scoreboard
+    const sh = ctx.createLinearGradient(0, HUD_H, 0, HUD_H + 60);
+    sh.addColorStop(0, 'rgba(0,0,0,0.6)');
+    sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(0, HUD_H, W, 60);
   }
 
-  function drawPitch() {
-    ctx.fillStyle = '#2d8a45';
-    ctx.fillRect(PITCH.x - 34, PITCH.y - 34, PITCH.w + 68, PITCH.h + 68);
-    for (let i = 0; i * 100 < PITCH.h; i++) {
-      ctx.fillStyle = i % 2 ? '#3aa656' : '#35994f';
-      ctx.fillRect(PITCH.x, PITCH.y + i * 100, PITCH.w, Math.min(100, PITCH.h - i * 100));
-    }
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.88)';
-    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  function drawLines() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.lineWidth = 5;
     ctx.strokeRect(PITCH.x, PITCH.y, PITCH.w, PITCH.h);
     ctx.beginPath();
@@ -634,6 +807,213 @@
     corner(PITCH.x, PITCH.y + PITCH.h, -Math.PI / 2);
   }
 
+  function drawPitchStatic() {
+    const R = { x: PITCH.x - 28, y: PITCH.y - 28, w: PITCH.w + 56, h: PITCH.h + 56 };
+    // shadow cast by the pitch onto the stands
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = '#2b7c40';
+    ctx.fillRect(R.x, R.y, R.w, R.h);
+    ctx.restore();
+
+    // mowing pattern: horizontal stripes + faint vertical bands = checkerboard
+    const rows = 15;
+    const sh = PITCH.h / rows;
+    for (let i = 0; i < rows; i++) {
+      ctx.fillStyle = i % 2 ? '#43b25e' : '#3aa153';
+      ctx.fillRect(PITCH.x, PITCH.y + i * sh, PITCH.w, sh + 0.5);
+    }
+    const cols = 8;
+    const cw = PITCH.w / cols;
+    for (let j = 0; j < cols; j += 2) {
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(PITCH.x + j * cw, PITCH.y, cw, PITCH.h);
+    }
+
+    // grass texture
+    const rnd = seeded(20260930);
+    for (let i = 0; i < 16000; i++) {
+      const x = R.x + rnd() * R.w;
+      const y = R.y + rnd() * R.h;
+      ctx.fillStyle = rnd() < 0.55 ? 'rgba(10,50,15,0.12)' : 'rgba(210,255,190,0.07)';
+      ctx.fillRect(x, y, 1.6, 2 + rnd() * 4);
+    }
+
+    // team names painted on the grass
+    ctx.save();
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    fitFont(CONFIG.teams.ronaldo.name, 700, 150);
+    ctx.fillText(CONFIG.teams.ronaldo.name, W / 2, (PITCH.y + 240 + MID_Y - 150) / 2);
+    fitFont(CONFIG.teams.messi.name, 700, 150);
+    ctx.fillText(CONFIG.teams.messi.name, W / 2, (MID_Y + 150 + PITCH.y + PITCH.h - 240) / 2);
+    ctx.restore();
+
+    // centre-circle emblem ring
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.lineWidth = 16;
+    ctx.strokeStyle = '#004D98';
+    ctx.beginPath();
+    ctx.arc(W / 2, MID_Y, 120, 0, Math.PI);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(W / 2, MID_Y, 120, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // floodlight lighting: bright centre, darker edges
+    const lg = ctx.createRadialGradient(W / 2, MID_Y, 60, W / 2, MID_Y, 950);
+    lg.addColorStop(0, 'rgba(255,255,225,0.12)');
+    lg.addColorStop(0.6, 'rgba(0,0,0,0)');
+    lg.addColorStop(1, 'rgba(0,0,0,0.28)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(R.x, R.y, R.w, R.h);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetY = 2;
+    drawLines();
+    ctx.restore();
+  }
+
+  function renderStatic() {
+    bg.width = canvas.width;
+    bg.height = canvas.height;
+    ctx = bgCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#05070d';
+    ctx.fillRect(0, 0, bg.width, bg.height);
+    applyView();
+    drawStands();
+    drawPitchStatic();
+    ctx = mainCtx;
+  }
+
+  // ---------- Dynamic drawing ----------
+  function drawCrowd() {
+    for (const f of crowd) {
+      const c = cheer[f.team];
+      const jump = (Math.sin(now * 12 + f.ph) * 0.5 + 0.5) * (1.5 + c * 12);
+      const y = f.y - jump;
+      ctx.fillStyle = f.shirt;
+      rr(f.x - 8, y - 1, 16, 12, 5);
+      ctx.fill();
+      ctx.fillStyle = f.skin;
+      circle(f.x, y - 6, 5.5);
+      ctx.fill();
+      if (f.scarf && c > 0.25) {
+        const wave = Math.sin(now * 10 + f.ph) * 2;
+        ctx.fillStyle = f.team === 'messi' ? '#A50044' : '#FFFFFF';
+        ctx.fillRect(f.x - 12, y - 20 + wave, 24, 5);
+        ctx.fillStyle = f.team === 'messi' ? '#004D98' : '#D4AF37';
+        ctx.fillRect(f.x - 3, y - 20 + wave, 6, 5);
+      }
+    }
+  }
+
+  function drawFloodlights() {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [x, y] of [[40, HUD_H + 10], [W - 40, HUD_H + 10], [40, H - 20], [W - 40, H - 20]]) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 300);
+      g.addColorStop(0, 'rgba(255,250,215,0.28)');
+      g.addColorStop(0.25, 'rgba(255,250,215,0.08)');
+      g.addColorStop(1, 'rgba(255,250,215,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - 300, y - 300, 600, 600);
+    }
+    ctx.restore();
+  }
+
+  let ledPattern = null;
+  function drawBoard(b) {
+    const messi = b.team === 'messi';
+    const len = b.vertical ? b.h : b.w;
+    const th = b.vertical ? b.w : b.h;
+    ctx.save();
+    rr(b.x, b.y, b.w, b.h, 5);
+    ctx.clip();
+    ctx.fillStyle = messi ? '#07122b' : '#11131c';
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    const flash = cheer[b.team];
+    if (flash > 0.05 && Math.sin(now * 28) > 0) {
+      ctx.fillStyle = messi ? `rgba(165,0,68,${flash})` : `rgba(212,175,55,${flash})`;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    }
+    ctx.save();
+    if (b.vertical) {
+      ctx.translate(b.x + b.w, b.y);
+      ctx.rotate(Math.PI / 2);
+    } else {
+      ctx.translate(b.x, b.y);
+    }
+    const text = `${CONFIG.boardText || ''}     ★     `;
+    ctx.font = `900 ${Math.round(th * 0.68)}px ${FONT}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(text).width || 1;
+    ctx.fillStyle = messi ? '#EDBB00' : '#FFFFFF';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 8;
+    for (let x = -((now * 90) % tw); x < len; x += tw) ctx.fillText(text, x, th / 2 + 1);
+    ctx.restore();
+    if (!ledPattern) {
+      const pc = document.createElement('canvas');
+      pc.width = 3;
+      pc.height = 3;
+      const p = pc.getContext('2d');
+      p.fillStyle = 'rgba(0,0,0,0.45)';
+      p.fillRect(2, 0, 1, 3);
+      p.fillRect(0, 2, 3, 1);
+      ledPattern = ctx.createPattern(pc, 'repeat');
+    }
+    ctx.fillStyle = ledPattern;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.restore();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#2c3654';
+    rr(b.x, b.y, b.w, b.h, 5);
+    ctx.stroke();
+  }
+
+  function drawCornerFlags() {
+    const corners = [
+      [PITCH.x, PITCH.y], [PITCH.x + PITCH.w, PITCH.y],
+      [PITCH.x, PITCH.y + PITCH.h], [PITCH.x + PITCH.w, PITCH.y + PITCH.h],
+    ];
+    for (const [x, y] of corners) {
+      const dir = x < W / 2 ? 1 : -1;
+      const top = y - 48;
+      const wave = Math.sin(now * 6 + x * 0.01) * 5;
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(x, y, 6, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#f2f2f2';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, top);
+      ctx.stroke();
+      ctx.fillStyle = '#ffd400';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.quadraticCurveTo(x + dir * 12, top + wave * 0.5, x + dir * 24, top + 6 + wave);
+      ctx.lineTo(x, top + 16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
   // Goal geometry: front frame on the goal line, back frame offset away from the pitch.
   function goalShape(g) {
     const far = g.dir < 0;
@@ -662,9 +1042,9 @@
     }
     ctx.closePath();
     ctx.clip();
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillStyle = g.dir < 0 ? 'rgba(10,20,15,0.35)' : 'rgba(255,255,255,0.08)';
     ctx.fillRect(x0, s.topY, x1 - x0, s.bottomY - s.topY);
-    ctx.strokeStyle = 'rgba(255,255,255,0.38)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.42)';
     ctx.lineWidth = 2;
     const wob = g.shake * 7;
     for (let x = x0, i = 0; x <= x1; x += 16, i++) {
@@ -687,7 +1067,6 @@
     const L = g.cx - GOAL_HALF;
     const R = g.cx + GOAL_HALF;
     const top = g.lineY - GOAL_HEIGHT;
-    // back frame (thin)
     ctx.strokeStyle = 'rgba(235,235,235,0.85)';
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -702,7 +1081,6 @@
     ctx.moveTo(g.cx - s.bw, s.backY - s.bh);
     ctx.lineTo(g.cx + s.bw, s.backY - s.bh);
     ctx.stroke();
-    // front posts + crossbar
     ctx.lineCap = 'round';
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 15;
@@ -838,7 +1216,6 @@
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // beard
       const ex = 37 * Math.cos(0.08 * Math.PI);
       const ey = hy + 37 * Math.sin(0.08 * Math.PI);
       ctx.beginPath();
@@ -859,14 +1236,12 @@
       ctx.stroke();
     }
 
-    // blush
     ctx.fillStyle = 'rgba(255,110,120,0.35)';
     circle(-22, hy + 10, 6);
     ctx.fill();
     circle(22, hy + 10, 6);
     ctx.fill();
 
-    // eyes
     ctx.fillStyle = OUTLINE;
     if (celebrating) {
       ctx.lineWidth = 4;
@@ -888,7 +1263,6 @@
       ctx.fill();
     }
 
-    // eyebrows
     ctx.lineWidth = 4;
     ctx.strokeStyle = kit.hair;
     const tilt = sad ? 4 : 0;
@@ -899,7 +1273,6 @@
     ctx.lineTo(7, hy - 12 - tilt);
     ctx.stroke();
 
-    // mouth
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 3.5;
     if (celebrating) {
@@ -932,7 +1305,7 @@
 
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
     ctx.ellipse(0, 0, 40 - jump * 0.3, 13, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -948,13 +1321,11 @@
     drawLeg(-12, swing, kit);
     drawLeg(12, -swing - kickLeg, kit);
 
-    // shorts
     ctx.fillStyle = kit.shorts;
     rr(-27, -58, 54, 20, 6);
     ctx.fill();
     ctx.stroke();
 
-    // shirt
     rr(-30, -106, 60, 52, 14);
     ctx.save();
     ctx.clip();
@@ -997,14 +1368,7 @@
     const name = team.name;
     const tw = ctx.measureText(name).width + 30;
     rr(p.x - tw / 2, p.y + 16, tw, 38, 19);
-    if (p.team === 'messi') {
-      const g = ctx.createLinearGradient(p.x - tw / 2, 0, p.x + tw / 2, 0);
-      g.addColorStop(0, '#004D98');
-      g.addColorStop(1, '#A50044');
-      ctx.fillStyle = g;
-    } else {
-      ctx.fillStyle = '#FFFFFF';
-    }
+    ctx.fillStyle = teamFill(p.team, p.x - tw / 2, p.x + tw / 2);
     ctx.fill();
     ctx.lineWidth = 3;
     ctx.strokeStyle = p.team === 'messi' ? '#EDBB00' : '#D4AF37';
@@ -1012,7 +1376,6 @@
     ctx.fillStyle = p.team === 'messi' ? '#FFFFFF' : '#1B2A6B';
     ctx.fillText(name, p.x, p.y + 36);
 
-    // celebration speech bubble
     if (celebrating && team.celebrate) {
       const by = p.y - 230 - jump;
       ctx.font = `900 34px ${FONT}`;
@@ -1077,42 +1440,136 @@
 
   function drawBanner() {
     if (!banner) return;
-    const dur = banner.big ? 2.2 : 1.4;
+    const dur = banner.big ? 2.2 : 1.6;
     const t = banner.t;
     const s = t < 0.25 ? easeOutBack(t / 0.25) : 1;
     const a = t > dur - 0.3 ? (dur - t) / 0.3 : 1;
-    const messi = banner.team === 'messi';
+    const team = banner.team;
     ctx.save();
     ctx.globalAlpha = clamp(a, 0, 1);
     ctx.translate(W / 2, MID_Y);
     ctx.scale(s, s);
     ctx.rotate(-0.05);
-    if (messi) {
-      const g = ctx.createLinearGradient(-440, 0, 440, 0);
-      g.addColorStop(0, '#004D98');
-      g.addColorStop(1, '#A50044');
-      ctx.fillStyle = g;
+    if (team) {
+      ctx.fillStyle = teamFill(team, -440, 440);
     } else {
-      ctx.fillStyle = '#FFFFFF';
+      const g = ctx.createLinearGradient(0, -90, 0, 90);
+      g.addColorStop(0, '#1d2340');
+      g.addColorStop(1, '#0a0d1a');
+      ctx.fillStyle = g;
     }
     rr(-450, -90, 900, 180, 34);
     ctx.fill();
     ctx.lineWidth = 8;
-    ctx.strokeStyle = messi ? '#EDBB00' : '#D4AF37';
+    ctx.strokeStyle = team === 'ronaldo' ? '#D4AF37' : '#EDBB00';
     ctx.stroke();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    fitFont(banner.text, 820, banner.big ? 96 : 130);
-    outlinedText(banner.text, 0, 6, messi ? '#FFFFFF' : '#1B2A6B', messi ? '#15161c' : '#D4AF37', 12);
+    fitFont(banner.text, 820, banner.big || !team ? 96 : 130);
+    if (team === 'ronaldo') outlinedText(banner.text, 0, 6, '#1B2A6B', '#D4AF37', 12);
+    else if (team === 'messi') outlinedText(banner.text, 0, 6, '#FFFFFF', '#15161c', 12);
+    else outlinedText(banner.text, 0, 6, '#EDBB00', '#15161c', 12);
+    ctx.restore();
+  }
+
+  // Big fading 5-4-3-2-1 over the pitch at the end of a round.
+  function drawCountdown() {
+    if (match.phase !== 'running') return;
+    const left = timeLeft();
+    if (left > 5000 || left <= 0) return;
+    const secs = Math.ceil(left / 1000);
+    const frac = secs - left / 1000; // 0 at the start of each second
+    ctx.save();
+    ctx.globalAlpha = 0.45 * (1 - frac);
+    ctx.translate(W / 2, MID_Y);
+    ctx.scale(1 + frac * 0.6, 1 + frac * 0.6);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `900 380px ${FONT}`;
+    outlinedText(String(secs), 0, 0, '#ffffff', '#c0102a', 18);
+    ctx.restore();
+  }
+
+  function drawResult() {
+    const r = match.lastResult;
+    if (match.phase !== 'intermission' || !r) return;
+    const win = r.winner;
+    const t = Math.min(resultT, 99);
+    const s = t < 0.4 ? easeOutBack(t / 0.4) : 1;
+    const nameOf = (team) => CONFIG.teams[team].name;
+
+    ctx.save();
+    ctx.fillStyle = `rgba(3,5,12,${0.45 * clamp(t / 0.4, 0, 1)})`;
+    ctx.fillRect(PITCH.x - 28, PITCH.y - 28, PITCH.w + 56, PITCH.h + 56);
+    ctx.translate(W / 2, MID_Y);
+    ctx.scale(s, s);
+
+    const cardW = 860;
+    const cardH = 520;
+    rr(-cardW / 2, -cardH / 2, cardW, cardH, 40);
+    if (win === 'draw') {
+      const g = ctx.createLinearGradient(0, -cardH / 2, 0, cardH / 2);
+      g.addColorStop(0, '#1d2340');
+      g.addColorStop(1, '#0a0d1a');
+      ctx.fillStyle = g;
+    } else {
+      ctx.fillStyle = teamFill(win, -cardW / 2, cardW / 2);
+    }
+    ctx.fill();
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = win === 'ronaldo' ? '#D4AF37' : '#EDBB00';
+    ctx.stroke();
+
+    const ink = win === 'ronaldo' ? '#1B2A6B' : '#FFFFFF';
+    const accent = win === 'ronaldo' ? '#B8901F' : '#EDBB00';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = accent;
+    ctx.font = `900 40px ${FONT}`;
+    ctx.fillText(`FULL TIME · ROUND ${r.round}`, 0, -190);
+
+    const headline = win === 'draw' ? "IT'S A DRAW!" : `🏆 ${nameOf(win)} WINS!`;
+    fitFont(headline, cardW - 80, 100);
+    outlinedText(headline, 0, -95, ink, win === 'ronaldo' ? '#D4AF37' : '#15161c', 10);
+
+    const score = `${r.scores.messi}  -  ${r.scores.ronaldo}`;
+    fitFont(score, cardW - 200, 110);
+    ctx.fillStyle = ink;
+    ctx.fillText(score, 0, 25);
+    ctx.font = `900 30px ${FONT}`;
+    ctx.fillStyle = accent;
+    ctx.textAlign = 'right';
+    ctx.fillText(nameOf('messi'), -140, 100);
+    ctx.textAlign = 'left';
+    ctx.fillText(nameOf('ronaldo'), 140, 100);
+    ctx.textAlign = 'center';
+
+    let line;
+    if (win === 'draw') line = 'No winner this round';
+    else if (match.streak.team === win && match.streak.count >= 2) line = `🔥 ${match.streak.count} WINS IN A ROW!`;
+    else line = `Total wins: ${match.wins[win]}`;
+    fitFont(line, cardW - 80, 48);
+    ctx.fillStyle = ink;
+    ctx.fillText(line, 0, 160);
+
+    const next = match.autoNextRound
+      ? `Next round in ${Math.ceil(timeLeft() / 1000)}…`
+      : 'Next round starting soon…';
+    ctx.font = `800 30px ${FONT}`;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(next, 0, 222);
     ctx.restore();
   }
 
   function drawHUD() {
-    const bg = ctx.createLinearGradient(0, 0, 0, 205);
-    bg.addColorStop(0, '#0a0f1f');
-    bg.addColorStop(1, '#131c38');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, 205);
+    const bgG = ctx.createLinearGradient(0, 0, 0, HUD_H);
+    bgG.addColorStop(0, '#0a0f1f');
+    bgG.addColorStop(1, '#141d3a');
+    ctx.fillStyle = bgG;
+    ctx.fillRect(0, 0, W, HUD_H);
+    ctx.fillStyle = '#EDBB00';
+    ctx.fillRect(0, HUD_H - 4, W, 4);
 
     const panel = (team, x) => {
       const messi = team === 'messi';
@@ -1120,87 +1577,140 @@
       if (disp > shown[team]) pop[team] = 1;
       shown[team] = disp;
 
-      rr(x, 16, 440, 146, 28);
-      if (messi) {
-        const g = ctx.createLinearGradient(x, 0, x + 440, 0);
-        g.addColorStop(0, '#004D98');
-        g.addColorStop(1, '#A50044');
-        ctx.fillStyle = g;
-      } else {
-        ctx.fillStyle = '#FFFFFF';
-      }
+      rr(x, 14, 370, 150, 26);
+      ctx.fillStyle = teamFill(team, x, x + 370);
       ctx.fill();
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 5;
       ctx.strokeStyle = messi ? '#EDBB00' : '#D4AF37';
       ctx.stroke();
 
-      const cx = x + 220;
+      const cx = x + 185;
       const ink = messi ? '#FFFFFF' : '#1B2A6B';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = ink;
-      fitFont(CONFIG.teams[team].name, 380, 38);
-      ctx.fillText(CONFIG.teams[team].name, cx, 48);
+      fitFont(CONFIG.teams[team].name, 330, 34);
+      ctx.fillText(CONFIG.teams[team].name, cx, 44);
 
       ctx.save();
-      ctx.translate(cx, 112);
+      ctx.translate(cx, 110);
       const s = 1 + pop[team] * 0.35;
       ctx.scale(s, s);
-      fitFont(String(disp), 380, 80);
-      outlinedText(String(disp), 0, 0, messi ? '#FFFFFF' : '#1B2A6B', messi ? '#15161c' : '#D4AF37', 6);
+      fitFont(String(disp), 330, 84);
+      outlinedText(String(disp), 0, 0, ink, messi ? '#15161c' : '#D4AF37', 6);
       ctx.restore();
-    };
-    panel('messi', 26);
-    panel('ronaldo', W - 26 - 440);
 
-    // VS badge
-    ctx.fillStyle = '#EDBB00';
-    circle(W / 2, 89, 46);
+      // wins + streak
+      rr(x, 176, 370, 58, 29);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = messi ? '#3d6fd1' : '#D4AF37';
+      ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `900 28px ${FONT}`;
+      const wins = match.wins[team] || 0;
+      const winsText = `🏆 ${wins} ${wins === 1 ? 'WIN' : 'WINS'}`;
+      ctx.fillText(winsText, x + 20, 206);
+      if (match.streak.team === team && match.streak.count >= 2) {
+        const room = 370 - 40 - ctx.measureText(winsText).width - 16;
+        ctx.save();
+        ctx.textAlign = 'right';
+        const glow = 0.5 + 0.5 * Math.sin(now * 6);
+        ctx.shadowColor = '#ff7a00';
+        ctx.shadowBlur = 10 + glow * 14;
+        ctx.fillStyle = '#ffb13b';
+        const streakText = `🔥 ${match.streak.count} STREAK`;
+        fitFont(streakText, room, 28);
+        ctx.fillText(streakText, x + 352, 206);
+        ctx.restore();
+      }
+    };
+    panel('messi', 16);
+    panel('ronaldo', W - 16 - 370);
+
+    // timer
+    const left = timeLeft();
+    const running = match.phase === 'running';
+    const urgent = running && left <= 10000;
+    rr(396, 14, 288, 150, 26);
+    ctx.fillStyle = urgent && Math.sin(now * 10) > 0 ? '#3a0710' : '#05070d';
     ctx.fill();
     ctx.lineWidth = 5;
-    ctx.strokeStyle = OUTLINE;
+    ctx.strokeStyle = urgent ? '#ff4d4d' : '#EDBB00';
     ctx.stroke();
-    ctx.fillStyle = OUTLINE;
-    ctx.font = `900 34px ${FONT}`;
-    ctx.fillText('VS', W / 2, 91);
 
-    if (CONFIG.tip) {
-      ctx.fillStyle = '#ffe27a';
-      fitFont(CONFIG.tip, W - 60, 28, '800');
-      ctx.fillText(CONFIG.tip, W / 2, 186);
+    const label = {
+      ready: 'KICK-OFF SOON',
+      running: 'TIME LEFT',
+      paused: '⏸ PAUSED',
+      intermission: 'FULL TIME',
+    }[match.phase] || '';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = match.phase === 'paused' ? '#ff9a3c' : '#EDBB00';
+    fitFont(label, 250, 24, '800');
+    ctx.fillText(label, W / 2, 44);
+
+    const clock = match.phase === 'intermission' ? '0:00' : formatTime(left);
+    const blinkOff = match.phase === 'paused' && Math.sin(now * 5) < -0.3;
+    if (!blinkOff) {
+      ctx.save();
+      ctx.translate(W / 2, 108);
+      if (urgent) {
+        const s = 1 + 0.08 * Math.max(0, Math.sin(now * 12));
+        ctx.scale(s, s);
+      }
+      fitFont(clock, 250, 76);
+      outlinedText(clock, 0, 0, urgent ? '#ff4d4d' : '#FFFFFF', '#000000', 4);
+      ctx.restore();
     }
+
+    rr(396, 176, 288, 58, 29);
+    ctx.fillStyle = 'rgba(237,187,0,0.14)';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#EDBB00';
+    ctx.stroke();
+    ctx.fillStyle = '#EDBB00';
+    const roundText = match.phase === 'intermission' ? `NEXT: ROUND ${match.round}` : `ROUND ${match.round}`;
+    fitFont(roundText, 250, 28);
+    ctx.fillText(roundText, W / 2, 206);
   }
 
   // ---------- Frame loop ----------
   let view = { s: 1, ox: 0, oy: 0, dpr: 1 };
+
+  function applyView() {
+    const { s, ox, oy, dpr } = view;
+    ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
+  }
+
   function resize() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(innerWidth * dpr);
     canvas.height = Math.round(innerHeight * dpr);
     const s = Math.min(innerWidth / W, innerHeight / H);
     view = { s, ox: (innerWidth - W * s) / 2, oy: (innerHeight - H * s) / 2, dpr };
+    renderStatic();
   }
 
   function draw() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#05070d';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const { s, ox, oy, dpr } = view;
-    ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
+    ctx.drawImage(bg, 0, 0);
+    applyView();
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
     ctx.clip();
 
-    drawStadium();
-    drawPitch();
+    drawCrowd();
+    drawFloodlights();
+    for (const b of BOARDS) drawBoard(b);
+    drawCornerFlags();
     drawNet(GOALS.top);
     drawFrame(GOALS.top);
 
-    const ents = [
-      ...balls.filter((b) => !(b.state === 'net' && ATTACK[b.team] === 'top')).map((b) => ({ y: b.y, b })),
-      ...Object.values(players).map((p) => ({ y: p.y, p })),
-    ].sort((a, b) => a.y - b.y);
     // Balls sitting in the far (top) net are drawn behind its front posts.
     ctx.save();
     ctx.beginPath();
@@ -1208,13 +1718,20 @@
     ctx.clip();
     for (const b of balls) if (b.state === 'net' && ATTACK[b.team] === 'top') drawBall(b);
     ctx.restore();
+
+    const ents = [
+      ...balls.filter((b) => !(b.state === 'net' && ATTACK[b.team] === 'top')).map((b) => ({ y: b.y, b })),
+      ...Object.values(players).map((p) => ({ y: p.y, p })),
+    ].sort((a, b) => a.y - b.y);
     for (const e of ents) (e.b ? drawBall(e.b) : drawPlayer(e.p));
 
     drawNet(GOALS.bottom);
     drawFrame(GOALS.bottom);
-    drawParticles();
+    drawCountdown();
     drawFloats();
     drawBanner();
+    drawResult();
+    drawParticles();
     drawHUD();
     ctx.restore();
   }
@@ -1236,22 +1753,25 @@
     document.body.classList.add('started');
   });
 
-  window.addEventListener('keydown', (e) => {
-    const k = e.key.toLowerCase();
-    if (k === 'f') {
+  const KEYS = {
+    1: () => post('/api/spawn', { team: 'messi', count: 1, gift: '🧪 Test' }),
+    2: () => post('/api/spawn', { team: 'ronaldo', count: 1, gift: '🧪 Test' }),
+    q: () => post('/api/spawn', { team: 'messi', count: 50, gift: '🧪 Test' }),
+    w: () => post('/api/spawn', { team: 'ronaldo', count: 50, gift: '🧪 Test' }),
+    s: () => post('/api/timer', { action: 'toggle' }),
+    e: () => post('/api/timer', { action: 'end' }),
+    r: () => post('/api/timer', { action: 'reset' }),
+    m: () => {
+      Sound.muted = !Sound.muted;
+    },
+    f: () => {
       if (document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen().catch(() => {});
-    } else if (k === 'm') {
-      Sound.muted = !Sound.muted;
-    } else if (k === '1') {
-      post('/api/spawn', { team: 'messi', count: 1, gift: '🧪 Test' });
-    } else if (k === '2') {
-      post('/api/spawn', { team: 'ronaldo', count: 1, gift: '🧪 Test' });
-    } else if (k === 'q') {
-      post('/api/spawn', { team: 'messi', count: 50, gift: '🧪 Test' });
-    } else if (k === 'w') {
-      post('/api/spawn', { team: 'ronaldo', count: 50, gift: '🧪 Test' });
-    }
+    },
+  };
+  window.addEventListener('keydown', (e) => {
+    const fn = KEYS[e.key.toLowerCase()];
+    if (fn && !e.repeat) fn();
   });
 
   window.addEventListener('resize', resize);
@@ -1261,6 +1781,7 @@
     .then((r) => r.json())
     .then((cfg) => {
       CONFIG = { ...CONFIG, ...cfg, teams: { ...CONFIG.teams, ...(cfg.teams || {}) } };
+      renderStatic(); // repaint the team names on the grass
     })
     .catch((err) => console.error('Config load failed', err))
     .finally(connect);
@@ -1268,5 +1789,5 @@
   requestAnimationFrame(frame);
 
   // Exposed for debugging in the browser console.
-  window.__game = { players, get balls() { return balls; }, serverScores };
+  window.__game = { players, match, get balls() { return balls; }, serverScores };
 })();

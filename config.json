@@ -4,8 +4,12 @@
     "messi": { "name": "MESSI", "number": "10", "celebrate": "¡VAMOS!" },
     "ronaldo": { "name": "RONALDO", "number": "7", "celebrate": "SIUUU!" }
   },
+  "roundSeconds": 180,
+  "intermissionSeconds": 12,
+  "autoStartNextRound": true,
   "megaBallThreshold": 10,
   "tip": "Send a gift + comment MESSI or RONALDO!",
+  "boardText": "⚽ MESSI vs RONALDO ⚽  SEND A GIFT TO SCORE FOR YOUR TEAM!",
   "gifts": [
     { "name": "Rose", "emoji": "🌹", "coins": 1 },
     { "name": "TikTok", "emoji": "🎵", "coins": 1 },
