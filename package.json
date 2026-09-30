@@ -1,0 +1,13 @@
+{
+  "name": "messi-vs-ronaldo-live",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gift-powered Messi vs Ronaldo football game for TikTok Live, controlled from a phone on the local network.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "port": 3000,
+  "teams": {
+    "messi": { "name": "MESSI", "number": "10", "celebrate": "¡VAMOS!" },
+    "ronaldo": { "name": "RONALDO", "number": "7", "celebrate": "SIUUU!" }
+  },
+  "megaBallThreshold": 10,
+  "tip": "Send a gift + comment MESSI or RONALDO!",
+  "gifts": [
+    { "name": "Rose", "emoji": "🌹", "coins": 1 },
+    { "name": "TikTok", "emoji": "🎵", "coins": 1 },
+    { "name": "GG", "emoji": "🎮", "coins": 1 },
+    { "name": "Ice Cream", "emoji": "🍦", "coins": 1 },
+    { "name": "Finger Heart", "emoji": "🫰", "coins": 5 },
+    { "name": "Rosa", "emoji": "💐", "coins": 10 },
+    { "name": "Perfume", "emoji": "🧴", "coins": 20 },
+    { "name": "Doughnut", "emoji": "🍩", "coins": 30 },
+    { "name": "Hand Hearts", "emoji": "🫶", "coins": 100 },
+    { "name": "Corgi", "emoji": "🐶", "coins": 299 },
+    { "name": "Money Gun", "emoji": "💸", "coins": 500 },
+    { "name": "Galaxy", "emoji": "🌌", "coins": 1000 }
+  ]
+}

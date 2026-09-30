@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0b0f1c">
+  <title>Controller · Messi vs Ronaldo</title>
+  <style>
+    :root {
+      --barca1: #004D98; --barca2: #A50044; --gold: #EDBB00;
+      --rmgold: #D4AF37; --navy: #1B2A6B;
+      --bg: #0b0f1c; --card: #151b2e; --line: #26304d; --text: #eef1f8; --muted: #8d97b5;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; padding: 12px 12px 96px; background: var(--bg); color: var(--text);
+      font: 15px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    }
+    button { font: inherit; cursor: pointer; }
+
+    .score {
+      position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center; gap: 8px; margin: -12px -12px 12px; padding: 10px 12px;
+      background: var(--bg); border-bottom: 1px solid var(--line);
+    }
+    .score .team { border-radius: 14px; padding: 6px 10px; text-align: center; }
+    .score .team b { display: block; font-size: 30px; line-height: 1.1; }
+    .score .team span { font-size: 12px; font-weight: 800; letter-spacing: .5px; }
+    .score .messi { background: linear-gradient(135deg, var(--barca1), var(--barca2)); color: #fff; }
+    .score .ronaldo { background: #fff; color: var(--navy); }
+    .score .mid { text-align: center; font-weight: 900; color: var(--gold); }
+    .dot { display: block; width: 10px; height: 10px; margin: 4px auto 0; border-radius: 50%; background: #d33; }
+    .dot.on { background: #2ecc71; }
+
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    label.small { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input {
+      width: 100%; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line);
+      background: #0e1324; color: var(--text); font: inherit; font-size: 16px;
+    }
+    .qty { display: flex; gap: 6px; margin-top: 10px; }
+    .qty button {
+      flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid var(--line);
+      background: #0e1324; color: var(--text); font-weight: 800;
+    }
+    .qty button.on { background: var(--gold); color: #111; border-color: var(--gold); }
+
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .colhead { text-align: center; font-weight: 900; padding: 8px; border-radius: 12px; margin-bottom: 8px; }
+    .colhead.messi { background: linear-gradient(135deg, var(--barca1), var(--barca2)); color: #fff; }
+    .colhead.ronaldo { background: #fff; color: var(--navy); }
+    .gifts { display: grid; gap: 8px; }
+    .gift {
+      display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px; border-radius: 14px;
+      border: 0; text-align: left; transition: transform .08s;
+    }
+    .gift:active { transform: scale(.94); }
+    .gift .emoji { font-size: 26px; }
+    .gift .info { display: flex; flex-direction: column; min-width: 0; }
+    .gift .gname { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gift .coins { font-size: 12px; opacity: .85; }
+    .gift.messi { background: linear-gradient(135deg, var(--barca1), var(--barca2)); color: #fff; }
+    .gift.ronaldo { background: #fff; color: var(--navy); box-shadow: inset 0 0 0 2px var(--rmgold); }
+
+    .custom button { padding: 11px 12px; border-radius: 12px; border: 0; font-weight: 800; white-space: nowrap; }
+    .custom .messi { background: linear-gradient(135deg, var(--barca1), var(--barca2)); color: #fff; }
+    .custom .ronaldo { background: #fff; color: var(--navy); }
+
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .actions button { padding: 13px 8px; border-radius: 12px; border: 1px solid var(--line); background: #0e1324; color: var(--text); font-weight: 800; }
+    .actions .danger { color: #ff8d8d; border-color: #5a2630; }
+    #undoInfo { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; }
+
+    #log { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+    #log li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+    #log li:last-child { border-bottom: 0; }
+    #log .m { color: #7fb2ff; font-weight: 800; }
+    #log .r { color: #fff; font-weight: 800; }
+    #log .t { color: var(--muted); white-space: nowrap; }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 140%); transition: transform .2s;
+      padding: 12px 20px; border-radius: 999px; background: #2ecc71; color: #062; font-weight: 900; z-index: 10;
+      max-width: calc(100% - 32px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0;
+    }
+    #toast.show { transform: translate(-50%, 0); opacity: 1; }
+    #toast.err { background: #ff6b6b; color: #300; }
+  </style>
+</head>
+<body>
+  <div class="score">
+    <div class="team messi"><span id="nameMessi">MESSI</span><b id="scoreMessi">0</b></div>
+    <div class="mid">VS<i id="dot" class="dot" title="connection"></i></div>
+    <div class="team ronaldo"><span id="nameRonaldo">RONALDO</span><b id="scoreRonaldo">0</b></div>
+  </div>
+
+  <div class="card">
+    <label class="small" for="sender">Viewer name (optional, shown on screen)</label>
+    <input id="sender" maxlength="30" placeholder="e.g. @ali_123" autocomplete="off">
+    <div class="qty" id="qty"></div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="colhead messi" id="headMessi">MESSI</div>
+      <div class="gifts" id="giftsMessi"></div>
+    </div>
+    <div>
+      <div class="colhead ronaldo" id="headRonaldo">RONALDO</div>
+      <div class="gifts" id="giftsRonaldo"></div>
+    </div>
+  </div>
+
+  <div class="card custom" style="margin-top:12px">
+    <label class="small" for="customCoins">Custom coins</label>
+    <div class="row">
+      <input id="customCoins" type="number" inputmode="numeric" min="1" max="100000" placeholder="coins">
+      <button class="messi" id="customMessi" type="button">Messi</button>
+      <button class="ronaldo" id="customRonaldo" type="button">Ronaldo</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button id="undo" type="button">↩ Undo last</button>
+      <button id="reset" class="danger" type="button">⟲ Reset score</button>
+    </div>
+    <div id="undoInfo"></div>
+  </div>
+
+  <div class="card">
+    <label class="small">Recent</label>
+    <ul id="log"></ul>
+  </div>
+
+  <div id="toast"></div>
+  <script src="/control.js"></script>
+</body>
+</html>
