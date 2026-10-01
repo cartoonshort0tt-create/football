@@ -233,6 +233,26 @@
     },
   };
 
+  // Celebration clips (public/sounds/*.mp3), triggered from the controller.
+  const CLIPS = { messi: new Audio('/sounds/messi.mp3'), ronaldo: new Audio('/sounds/ronaldo.mp3') };
+  for (const a of Object.values(CLIPS)) a.preload = 'auto';
+
+  function stopClips() {
+    for (const a of Object.values(CLIPS)) {
+      a.pause();
+      a.currentTime = 0;
+    }
+  }
+
+  function playClip(team) {
+    stopClips();
+    if (team === 'stop' || !CLIPS[team]) return;
+    if (!Sound.muted) CLIPS[team].play().catch((err) => console.warn('Sound blocked — click Start on the game screen first.', err));
+    const p = players[team];
+    if (p.state !== 'kick') Object.assign(p, { state: 'celebrate', stateT: 3 });
+    cheer[team] = 1;
+  }
+
   // ---------- Game state ----------
   const serverScores = { messi: 0, ronaldo: 0 };
   const shown = { messi: 0, ronaldo: 0 };
@@ -379,6 +399,7 @@
     else if (msg.type === 'undo') onUndo(msg);
     else if (msg.type === 'reset') onReset(msg);
     else if (msg.type === 'match') onMatchEvent(msg);
+    else if (msg.type === 'sound') playClip(msg.team);
   }
 
   function connect() {
@@ -1763,6 +1784,7 @@
     r: () => post('/api/timer', { action: 'reset' }),
     m: () => {
       Sound.muted = !Sound.muted;
+      if (Sound.muted) stopClips();
     },
     f: () => {
       if (document.fullscreenElement) document.exitFullscreen();
@@ -1789,5 +1811,5 @@
   requestAnimationFrame(frame);
 
   // Exposed for debugging in the browser console.
-  window.__game = { players, match, get balls() { return balls; }, serverScores };
+  window.__game = { players, match, clips: CLIPS, get balls() { return balls; }, serverScores };
 })();

@@ -90,6 +90,11 @@
     .tbtns button { padding: 12px 4px; border-radius: 12px; border: 1px solid var(--line); background: #0e1324; color: var(--text); font-weight: 800; }
     .tbtns .big { grid-column: span 3; padding: 14px; font-size: 18px; border: 0; background: #2ecc71; color: #062; }
     .tbtns .big.pause { background: #ff9a3c; color: #311; }
+    .sounds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .sounds button { padding: 16px 8px; border-radius: 14px; border: 0; font-weight: 900; font-size: 17px; }
+    .sounds .messi { background: linear-gradient(135deg, var(--barca1), var(--barca2)); color: #fff; }
+    .sounds .ronaldo { background: #fff; color: var(--navy); box-shadow: inset 0 0 0 2px var(--rmgold); }
+    .sounds .stop { grid-column: span 2; padding: 10px; background: #0e1324; color: var(--muted); border: 1px solid var(--line); font-size: 14px; }
     .link { background: none; border: 0; color: var(--muted); text-decoration: underline; padding: 8px 0 0; font-size: 13px; }
 
     #toast {
@@ -130,6 +135,15 @@
     </div>
     <label class="small" style="margin-top:12px">Round length</label>
     <div class="qty" id="durations"></div>
+  </div>
+
+  <div class="card">
+    <label class="small">Celebration sounds (play on the game screen)</label>
+    <div class="sounds">
+      <button class="messi" type="button" data-sound="messi">🔊 ANKARA MESSI</button>
+      <button class="ronaldo" type="button" data-sound="ronaldo">🔊 SIUUU!</button>
+      <button class="stop" type="button" data-sound="stop">⏹ Stop sound</button>
+    </div>
   </div>
 
   <div class="card">

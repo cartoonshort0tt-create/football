@@ -207,6 +207,14 @@
   $('tWins').onclick = () => {
     if (confirm('Reset the win count and streak?')) timer({ action: 'resetWins' });
   };
+  for (const b of document.querySelectorAll('[data-sound]')) {
+    b.onclick = async () => {
+      if (await post('/api/sound', { team: b.dataset.sound })) {
+        if (navigator.vibrate) navigator.vibrate(25);
+        toast(b.dataset.sound === 'stop' ? '⏹ Sound stopped' : `🔊 ${b.textContent.replace('🔊 ', '')}`);
+      }
+    };
+  }
   for (const b of document.querySelectorAll('[data-add]')) {
     b.onclick = () => timer({ action: 'add', seconds: Number(b.dataset.add) });
   }

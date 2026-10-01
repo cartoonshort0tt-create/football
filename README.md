@@ -60,6 +60,12 @@ When time runs out, the team with more goals wins the round (+1 win, streak grow
 A draw gives no win and ends any streak. Gifts sent during the full-time card
 count for the next round.
 
+**Celebration sounds**
+- **🔊 ANKARA MESSI** / **🔊 SIUUU!** — plays the clip on the game screen (so it goes out on
+  the stream) and that player celebrates. **⏹ Stop sound** cuts it off.
+- To use other clips, replace `public/sounds/messi.mp3` / `public/sounds/ronaldo.mp3`
+  (keep the same file names).
+
 **Gifts**
 
 - **Tap a gift** under **MESSI** or **RONALDO** → balls spawn for that side.

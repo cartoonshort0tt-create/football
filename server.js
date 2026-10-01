@@ -31,6 +31,7 @@ const MIME = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.mp3': 'audio/mpeg',
 };
 
 class HttpError extends Error {
@@ -311,6 +312,14 @@ function timerAction(body) {
   return { ok: true, ...snapshot() };
 }
 
+// Celebration sound requested from the controller; played by the game screen.
+function playSound(body) {
+  const team = body.team;
+  if (team !== 'stop' && !TEAMS.includes(team)) throw new HttpError(400, 'team must be "messi", "ronaldo" or "stop"');
+  broadcast({ type: 'sound', team });
+  return { ok: true };
+}
+
 function publicConfig() {
   return {
     teams: config.teams,
@@ -379,6 +388,7 @@ const server = http.createServer(async (req, res) => {
     if (route === 'POST /api/spawn') return json(res, 200, spawn(await readJson(req)));
     if (route === 'POST /api/undo') return json(res, 200, undo());
     if (route === 'POST /api/reset') return json(res, 200, reset());
+    if (route === 'POST /api/sound') return json(res, 200, playSound(await readJson(req)));
     if (route === 'POST /api/timer') return json(res, 200, timerAction(await readJson(req)));
     if (req.method === 'GET' || req.method === 'HEAD') return serveStatic(pathname, res);
     json(res, 405, { error: 'Method not allowed' });
