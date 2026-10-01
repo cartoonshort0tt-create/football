@@ -76,9 +76,11 @@ count for the next round.
 
 **Celebration sounds**
 - **🔊 ANKARA MESSI** / **🔊 SIUUU!** — plays the clip on the game screen (so it goes out on
-  the stream) and that player celebrates. **⏹ Stop sound** cuts it off.
-- To use other clips, replace `public/sounds/messi.mp3` / `public/sounds/ronaldo.mp3`
-  (keep the same file names).
+  the stream) and that player celebrates.
+- **📣 GOOOOAAL!** / **📣 GOL DE SEÑOR** — goal shouts for any team; the whole crowd jumps.
+- **⏹ Stop sound** cuts any clip off.
+- To use other clips, replace the files in `public/sounds/` (`messi.mp3`, `ronaldo.mp3`,
+  `goal.mp3`, `senor.mp3`) and keep the same file names.
 
 **Gifts**
 

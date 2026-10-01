@@ -223,7 +223,12 @@
   };
 
   // Celebration clips (public/sounds/*.mp3), triggered from the controller.
-  const CLIPS = { messi: new Audio('/sounds/messi.mp3'), ronaldo: new Audio('/sounds/ronaldo.mp3') };
+  const CLIPS = {
+    messi: new Audio('/sounds/messi.mp3'),
+    ronaldo: new Audio('/sounds/ronaldo.mp3'),
+    goal: new Audio('/sounds/goal.mp3'),
+    senor: new Audio('/sounds/senor.mp3'),
+  };
   for (const a of Object.values(CLIPS)) a.preload = 'auto';
 
   function stopClips() {
@@ -237,6 +242,12 @@
     stopClips();
     if (team === 'stop' || !CLIPS[team]) return;
     if (!Sound.muted) CLIPS[team].play().catch((err) => console.warn('Sound blocked — click Start on the game screen first.', err));
+    if (!players[team]) {
+      // general goal shouts: the whole crowd jumps
+      cheer.messi = 1;
+      cheer.ronaldo = 1;
+      return;
+    }
     const p = players[team];
     if (p.state !== 'kick') Object.assign(p, { state: 'celebrate', stateT: 3 });
     cheer[team] = 1;

@@ -316,9 +316,11 @@ function timerAction(body) {
 }
 
 // Celebration sound requested from the controller; played by the game screen.
+const SOUNDS = ['messi', 'ronaldo', 'goal', 'senor', 'stop'];
+
 function playSound(body) {
   const team = body.team;
-  if (team !== 'stop' && !TEAMS.includes(team)) throw new HttpError(400, 'team must be "messi", "ronaldo" or "stop"');
+  if (!SOUNDS.includes(team)) throw new HttpError(400, `sound must be one of: ${SOUNDS.join(', ')}`);
   broadcast({ type: 'sound', team });
   return { ok: true };
 }
