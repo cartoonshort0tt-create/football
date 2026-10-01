@@ -21,6 +21,14 @@ the other goal.
 1. Install **Node.js** (LTS) from <https://nodejs.org>. Nothing else is needed — no `npm install`.
 2. Download this repo (Code → Download ZIP, or `git clone`).
 
+## Getting updates
+
+1. Close the black server window.
+2. Double-click **`update.bat`** — it downloads the newest version into this folder
+   (your scores and wins are kept; `config.json` is replaced, so re-apply any edits).
+3. Double-click **`start.bat`** again, and press **Ctrl+F5** on the game page and the
+   controller page so the browser loads the new code.
+
 ## Every stream
 
 1. **Start the server** — double-click `start.bat` (Windows), or run `node server.js`.
@@ -97,4 +105,5 @@ public/game.js       game engine & drawing
 public/control.html  phone controller
 public/control.js
 start.bat            double-click launcher for Windows
+update.bat           double-click to download the latest version
 ```
