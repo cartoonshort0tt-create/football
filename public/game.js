@@ -1903,7 +1903,7 @@
       ctx.translate(tx, 100);
       const s = 1 + pop[team] * 0.35;
       ctx.scale(s, s);
-      fitFont(String(disp), 220, 72);
+      fitFont(String(disp), 165, 72); // stays clear of the badge
       outlinedText(String(disp), 0, 0, ink, messi ? '#0a1a5a' : '#c9a43a', 5);
       ctx.restore();
 

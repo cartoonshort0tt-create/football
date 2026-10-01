@@ -19,7 +19,7 @@ const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'
 const PORT = Number(process.env.PORT) || config.port || 3000;
 
 const TEAMS = ['messi', 'ronaldo'];
-const MAX_COINS = 100000;
+const MAX_COINS = 1000000;
 const GOALS_PER_COIN = Math.max(1, Math.floor(Number(config.goalsPerCoin) || 1));
 const HISTORY_LIMIT = 200;
 const RECENT = 8;

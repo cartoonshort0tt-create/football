@@ -16,13 +16,19 @@
       { "name": "GOAT", "emoji": "🐐", "coins": 1 },
       { "name": "Finger Heart", "emoji": "🫰", "coins": 5 },
       { "name": "Hand Hearts", "emoji": "🫶", "coins": 100 },
-      { "name": "Glowing Jellyfish", "emoji": "🪼", "coins": 1000 }
+      { "name": "250 Coin Gift", "emoji": "💎", "coins": 250 },
+      { "name": "Glowing Jellyfish", "emoji": "🪼", "coins": 1000 },
+      { "name": "5K Coin Gift", "emoji": "🦁", "coins": 5000 },
+      { "name": "10K Coin Gift", "emoji": "👑", "coins": 10000 }
     ],
     "ronaldo": [
       { "name": "GG", "emoji": "🎮", "coins": 1 },
       { "name": "Spinning Soccer", "emoji": "⚽", "coins": 5 },
       { "name": "Super GG", "emoji": "🕹️", "coins": 100 },
-      { "name": "Galaxy", "emoji": "🌌", "coins": 1000 }
+      { "name": "250 Coin Gift", "emoji": "💎", "coins": 250 },
+      { "name": "Galaxy", "emoji": "🌌", "coins": 1000 },
+      { "name": "5K Coin Gift", "emoji": "🦁", "coins": 5000 },
+      { "name": "10K Coin Gift", "emoji": "👑", "coins": 10000 }
     ]
   }
 }

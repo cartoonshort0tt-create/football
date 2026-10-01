@@ -17,6 +17,13 @@
     return e;
   }
 
+  // 1250 -> "1.25K", 50000 -> "50K", 2000000 -> "2M"
+  function short(n) {
+    if (n >= 1e6) return `${+(n / 1e6).toFixed(2)}M`;
+    if (n >= 1e3) return `${+(n / 1e3).toFixed(2)}K`;
+    return String(n);
+  }
+
   function teamName(team) {
     return (config.teams[team] && config.teams[team].name) || team.toUpperCase();
   }
@@ -81,7 +88,7 @@
     const info = el('span', 'info');
     info.appendChild(el('span', 'gname', gift.name));
     const goals = gift.coins * (config.goalsPerCoin || 1);
-    info.appendChild(el('span', 'coins', `🪙 ${gift.coins} = ⚽ ${goals}`));
+    info.appendChild(el('span', 'coins', `🪙 ${short(gift.coins)} = ⚽ ${short(goals)}`));
     b.appendChild(info);
     b.onclick = () => {
       const label = `${gift.emoji || '🎁'} ${gift.name}${qty > 1 ? ' x' + qty : ''}`;

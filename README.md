@@ -10,7 +10,7 @@ the other goal.
 - **1 coin = 5 goals** (`goalsPerCoin`). Up to 10 goals drop as separate balls; bigger gifts
   drop one glowing **mega ball** worth all the goals (e.g. Hand Hearts = 100 coins = +500).
 - **Each team has its own gifts**: Messi — GOAT, Finger Heart, Hand Hearts, Glowing Jellyfish;
-  Ronaldo — GG, Spinning Soccer, Super GG, Galaxy.
+  Ronaldo — GG, Spinning Soccer, Super GG, Galaxy. Both teams also have 250, 5K and 10K coin gifts.
 - **3-minute rounds** with a big match clock, referee whistles, a red 5-4-3-2-1 countdown,
   and a **FULL TIME** winner card. The next round starts automatically after 12 seconds.
 - **Win count + winning streak** (🏆 3 WINS · 🔥 3 STREAK) under each team.
