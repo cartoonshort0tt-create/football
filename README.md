@@ -7,8 +7,10 @@ the other goal.
 
 - **Messi** — cartoon Barça colours (blue & garnet, #10), attacks the **top** goal
 - **Ronaldo** — cartoon Real Madrid white (#7), attacks the **bottom** goal
-- **1 coin = 1 goal.** Gifts up to 10 coins drop as separate balls; bigger gifts drop one
-  glowing **mega ball** worth all the coins (e.g. Hand Hearts = +100 in one shot).
+- **1 coin = 5 goals** (`goalsPerCoin`). Up to 10 goals drop as separate balls; bigger gifts
+  drop one glowing **mega ball** worth all the goals (e.g. Hand Hearts = 100 coins = +500).
+- **Each team has its own gifts**: Messi — GOAT, Finger Heart, Hand Hearts, Glowing Jellyfish;
+  Ronaldo — GG, Spinning Soccer, Super GG, Galaxy.
 - **3-minute rounds** with a big match clock, referee whistles, a red 5-4-3-2-1 countdown,
   and a **FULL TIME** winner card. The next round starts automatically after 12 seconds.
 - **Win count + winning streak** (🏆 3 WINS · 🔥 3 STREAK) under each team.
@@ -68,10 +70,11 @@ count for the next round.
 
 **Gifts**
 
-- **Tap a gift** under **MESSI** or **RONALDO** → balls spawn for that side.
+- **Tap a gift** under **MESSI** or **RONALDO** → balls spawn for that side. Each button shows
+  its coins and the goals it gives (🪙 5 = ⚽ 25).
 - **x2 / x5 / x10 / x20** — for gift streaks (e.g. Rose x10). Resets to x1 after each tap.
 - **Viewer name** (optional) — shown on screen as "from @name". Clears after each tap.
-- **Custom coins** — any amount for gifts that aren't in the list.
+- **Custom coins** — any amount of coins for gifts that aren't in the list (×5 goals).
 - **Undo last** — removes the last gift you entered (for mis-taps).
 - **Reset score** — back to 0 – 0.
 
@@ -84,15 +87,17 @@ count for the next round.
 | S | Start / pause the match clock |
 | E | End the round now |
 | R | Reset the clock |
-| 1 / 2 | Test: one ball for Messi / Ronaldo |
-| Q / W | Test: 50-coin mega ball for Messi / Ronaldo |
+| 1 / 2 | Test: 1 coin (5 goals) for Messi / Ronaldo |
+| Q / W | Test: 10 coins (50-goal mega ball) for Messi / Ronaldo |
 
 ## Customising — `config.json`
 
 - `teams.*.name` / `number` / `celebrate` — names on screen, shirt numbers, celebration text.
-- `gifts` — the buttons on the phone: `name`, `emoji`, `coins`. TikTok gift prices change
-  now and then, so check them in the app and edit here. Restart the server after editing.
-- `megaBallThreshold` — gifts above this many coins become one mega ball (default 10).
+- `goalsPerCoin` — goals per coin (default 5).
+- `gifts.messi` / `gifts.ronaldo` — each team's buttons on the phone: `name`, `emoji`, `coins`.
+  TikTok gift prices change now and then, so check them in the app and edit here.
+  Restart the server after editing.
+- `megaBallThreshold` — gifts worth more than this many goals become one mega ball (default 10).
 - `roundSeconds` — round length (default 180 = 3 minutes).
 - `intermissionSeconds` — how long the FULL TIME card shows (default 12).
 - `autoStartNextRound` — `true` starts the next round by itself; `false` waits for you to press Start.

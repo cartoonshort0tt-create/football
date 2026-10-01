@@ -47,7 +47,7 @@
     }
     .qty button.on { background: var(--gold); color: #111; border-color: var(--gold); }
 
-    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
     .colhead { text-align: center; font-weight: 900; padding: 8px; border-radius: 12px; margin-bottom: 8px; }
     .colhead.messi { background: linear-gradient(135deg, var(--barca1), var(--barca2)); color: #fff; }
     .colhead.ronaldo { background: #fff; color: var(--navy); }
@@ -59,8 +59,8 @@
     .gift:active { transform: scale(.94); }
     .gift .emoji { font-size: 26px; }
     .gift .info { display: flex; flex-direction: column; min-width: 0; }
-    .gift .gname { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .gift .coins { font-size: 12px; opacity: .85; }
+    .gift .gname { font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+    .gift .coins { font-size: 12px; opacity: .85; white-space: nowrap; }
     .gift.messi { background: linear-gradient(135deg, var(--barca1), var(--barca2)); color: #fff; }
     .gift.ronaldo { background: #fff; color: var(--navy); box-shadow: inset 0 0 0 2px var(--rmgold); }
 
@@ -164,7 +164,7 @@
   </div>
 
   <div class="card custom" style="margin-top:12px">
-    <label class="small" for="customCoins">Custom coins</label>
+    <label class="small" for="customCoins">Custom coins (<span id="gpc">5</span> goals per coin)</label>
     <div class="row">
       <input id="customCoins" type="number" inputmode="numeric" min="1" max="100000" placeholder="coins">
       <button class="messi" id="customMessi" type="button">Messi</button>

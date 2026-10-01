@@ -19,7 +19,8 @@ const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'
 const PORT = Number(process.env.PORT) || config.port || 3000;
 
 const TEAMS = ['messi', 'ronaldo'];
-const MAX_COUNT = 100000;
+const MAX_COINS = 100000;
+const GOALS_PER_COIN = Math.max(1, Math.floor(Number(config.goalsPerCoin) || 1));
 const HISTORY_LIMIT = 200;
 const RECENT = 8;
 
@@ -157,14 +158,16 @@ function openStream(req, res) {
 function spawn(body) {
   const team = body.team;
   if (!TEAMS.includes(team)) throw new HttpError(400, 'team must be "messi" or "ronaldo"');
-  const count = Math.floor(Number(body.count));
-  if (!Number.isFinite(count) || count < 1 || count > MAX_COUNT) {
-    throw new HttpError(400, `count must be between 1 and ${MAX_COUNT}`);
+  const coins = Math.floor(Number(body.coins));
+  if (!Number.isFinite(coins) || coins < 1 || coins > MAX_COINS) {
+    throw new HttpError(400, `coins must be between 1 and ${MAX_COINS}`);
   }
+  const count = coins * GOALS_PER_COIN; // goals
   const entry = {
     id: state.nextId++,
     team,
     count,
+    coins,
     gift: clean(body.gift, 40),
     sender: clean(body.sender, 30),
     time: Date.now(),
@@ -324,6 +327,7 @@ function publicConfig() {
   return {
     teams: config.teams,
     gifts: config.gifts,
+    goalsPerCoin: GOALS_PER_COIN,
     megaBallThreshold: config.megaBallThreshold,
     tip: config.tip,
     boardText: config.boardText,

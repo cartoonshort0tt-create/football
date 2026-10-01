@@ -62,14 +62,15 @@
   }
 
   // ---------- Sending ----------
-  async function send(team, count, gift) {
+  async function send(team, coins, gift) {
     const sender = $('sender').value.trim();
-    const data = await post('/api/spawn', { team, count, gift, sender });
+    const data = await post('/api/spawn', { team, coins, gift, sender });
     if (!data) return;
     if (navigator.vibrate) navigator.vibrate(25);
-    toast(`✔ +${count} ${teamName(team)}${sender ? ' · ' + sender : ''}`);
+    toast(`✔ +${data.entry.count} goals ${teamName(team)}${sender ? ' · ' + sender : ''}`);
     $('sender').value = '';
     qty = 1;
+    $('gpc').textContent = config.goalsPerCoin || 1;
     renderQty();
   }
 
@@ -79,7 +80,8 @@
     b.appendChild(el('span', 'emoji', gift.emoji || '🎁'));
     const info = el('span', 'info');
     info.appendChild(el('span', 'gname', gift.name));
-    info.appendChild(el('span', 'coins', `🪙 ${gift.coins}`));
+    const goals = gift.coins * (config.goalsPerCoin || 1);
+    info.appendChild(el('span', 'coins', `🪙 ${gift.coins} = ⚽ ${goals}`));
     b.appendChild(info);
     b.onclick = () => {
       const label = `${gift.emoji || '🎁'} ${gift.name}${qty > 1 ? ' x' + qty : ''}`;
@@ -94,18 +96,20 @@
     for (const [team, boxId] of [['messi', 'giftsMessi'], ['ronaldo', 'giftsRonaldo']]) {
       const box = $(boxId);
       box.textContent = '';
-      for (const gift of config.gifts || []) box.appendChild(giftButton(team, gift));
+      // gifts can be one shared list or a separate list per team
+      const list = Array.isArray(config.gifts) ? config.gifts : (config.gifts && config.gifts[team]) || [];
+      for (const gift of list) box.appendChild(giftButton(team, gift));
     }
     renderQty();
   }
 
   function sendCustom(team) {
-    const count = Math.floor(Number($('customCoins').value));
-    if (!count || count < 1) {
+    const coins = Math.floor(Number($('customCoins').value));
+    if (!coins || coins < 1) {
       toast('⚠ Enter a number of coins', true);
       return;
     }
-    send(team, count, '🪙 Coins');
+    send(team, coins, `🪙 ${coins} coins`);
     $('customCoins').value = '';
   }
 

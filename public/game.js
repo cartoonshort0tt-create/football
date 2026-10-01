@@ -2083,10 +2083,10 @@
   });
 
   const KEYS = {
-    1: () => post('/api/spawn', { team: 'messi', count: 1, gift: '🧪 Test' }),
-    2: () => post('/api/spawn', { team: 'ronaldo', count: 1, gift: '🧪 Test' }),
-    q: () => post('/api/spawn', { team: 'messi', count: 50, gift: '🧪 Test' }),
-    w: () => post('/api/spawn', { team: 'ronaldo', count: 50, gift: '🧪 Test' }),
+    1: () => post('/api/spawn', { team: 'messi', coins: 1, gift: '🧪 Test' }),
+    2: () => post('/api/spawn', { team: 'ronaldo', coins: 1, gift: '🧪 Test' }),
+    q: () => post('/api/spawn', { team: 'messi', coins: 10, gift: '🧪 Test' }),
+    w: () => post('/api/spawn', { team: 'ronaldo', coins: 10, gift: '🧪 Test' }),
     s: () => post('/api/timer', { action: 'toggle' }),
     e: () => post('/api/timer', { action: 'end' }),
     r: () => post('/api/timer', { action: 'reset' }),
