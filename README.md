@@ -12,7 +12,7 @@ the other goal.
 - **3-minute rounds** with a big match clock, referee whistles, a red 5-4-3-2-1 countdown,
   and a **FULL TIME** winner card. The next round starts automatically after 12 seconds.
 - **Win count + winning streak** (🏆 3 WINS · 🔥 3 STREAK) under each team.
-- Stadium with mowed-grass pitch, floodlights, scrolling LED boards, cheering fans waving scarves.
+- Stadium look: angled scoreboard with club-style badges, floodlights, team banners and hanging pennants, gold bottom bar, cheering fans waving scarves.
 - Goal banners, combos (`GOAL x5!`), confetti, crowd noise, "SIUUU!" celebrations.
 - Score, wins and streak are saved, so restarting the PC keeps them.
 
@@ -96,7 +96,7 @@ count for the next round.
 - `roundSeconds` — round length (default 180 = 3 minutes).
 - `intermissionSeconds` — how long the FULL TIME card shows (default 12).
 - `autoStartNextRound` — `true` starts the next round by itself; `false` waits for you to press Start.
-- `boardText` — the scrolling text on the LED boards around the pitch.
+- `boardText` — the gold text in the bar at the bottom of the screen.
 - `port` — change if 3000 is taken.
 
 Scores are stored in `data/scores.json` (delete it or use **Reset score** to start fresh).

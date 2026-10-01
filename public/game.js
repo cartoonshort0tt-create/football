@@ -4,8 +4,7 @@
   // ---------- Layout: logical 1080x1920 portrait (TikTok 9:16), scaled to fit ----------
   const W = 1080;
   const H = 1920;
-  const HUD_H = 250;
-  const PITCH = { x: 100, y: 430, w: 880, h: 1380 };
+  const PITCH = { x: 120, y: 450, w: 840, h: 1250 };
   const MID_Y = PITCH.y + PITCH.h / 2;
   const GOAL_HALF = 150; // half width of the goal mouth
   const GOAL_HEIGHT = 110; // crossbar height (pseudo-3D)
@@ -35,16 +34,6 @@
   const ATTACK = { messi: 'top', ronaldo: 'bottom' };
   const OPP = { messi: 'ronaldo', ronaldo: 'messi' };
 
-  // LED advertising boards around the pitch.
-  const BOARDS = [
-    { x: 76, y: PITCH.y - 62, w: 308, h: 28, team: 'messi' },
-    { x: W - 384, y: PITCH.y - 62, w: 308, h: 28, team: 'ronaldo' },
-    { x: 76, y: PITCH.y + PITCH.h + 34, w: 296, h: 28, team: 'messi' },
-    { x: W - 372, y: PITCH.y + PITCH.h + 34, w: 296, h: 28, team: 'ronaldo' },
-    { x: 46, y: PITCH.y - 62, w: 26, h: PITCH.h + 124, team: 'messi', vertical: true },
-    { x: W - 72, y: PITCH.y - 62, w: 26, h: PITCH.h + 124, team: 'ronaldo', vertical: true },
-  ];
-
   let CONFIG = {
     teams: {
       messi: { name: 'MESSI', number: '10', celebrate: '¡VAMOS!' },
@@ -52,7 +41,7 @@
     },
     megaBallThreshold: 10,
     tip: '',
-    boardText: '⚽ MESSI vs RONALDO ⚽  SEND A GIFT TO SCORE FOR YOUR TEAM!',
+    boardText: 'SEND A GIFT TO SCORE FOR YOUR TEAM!',
   };
 
   // ---------- Helpers ----------
@@ -664,7 +653,7 @@
     const cols = KITS[team].confetti;
     for (let i = 0; i < n; i++) {
       particles.push({
-        x: rand(PITCH.x, PITCH.x + PITCH.w), y: rand(HUD_H - 20, HUD_H + 40), vx: rand(-40, 40), vy: rand(80, 180), g: 60,
+        x: rand(PITCH.x, PITCH.x + PITCH.w), y: rand(PITCH.y - 60, PITCH.y + 10), vx: rand(-40, 40), vy: rand(80, 180), g: 60,
         rot: rand(0, 6), vr: rand(-8, 8), w: rand(10, 18), h: rand(6, 10), c: pick(cols), life: rand(4, 7),
       });
     }
@@ -689,28 +678,39 @@
   }
 
   // ---------- Crowd ----------
+  // Fans are grouped by colour so the whole crowd is drawn with a handful of fills.
   const crowd = [];
+  const crowdByShirt = new Map();
+  const crowdBySkin = new Map();
   (function buildCrowd() {
     const skins = ['#f1c29b', '#e0ac7e', '#c68b5e', '#8d5a3b', '#f6d3b3'];
     const shirts = {
-      messi: ['#A50044', '#004D98', '#004D98', '#A50044', '#EDBB00'],
-      ronaldo: ['#FFFFFF', '#FFFFFF', '#E9E9EF', '#D4AF37', '#1B2A6B'],
+      messi: ['#1b4fd0', '#c0103a', '#1b4fd0', '#a50044', '#f2c94c', '#ffffff'],
+      ronaldo: ['#ffffff', '#ffffff', '#f2c94c', '#e8e8ee', '#1b2a6b', '#c0103a'],
     };
-    const add = (x, y, team) => crowd.push({
-      x, y, team, shirt: pick(shirts[team]), skin: pick(skins), ph: rand(0, 6), scarf: Math.random() < 0.35,
-    });
-    // main stand behind the top goal
-    for (let y = 272, row = 0; y < PITCH.y - 72; y += 20, row++) {
-      for (let x = 12 + (row % 2) * 10; x < W; x += 20) add(x, y, x < W / 2 ? 'messi' : 'ronaldo');
+    const barTop = PITCH.y + PITCH.h + 70;
+    const add = (x, y, team) => {
+      if (y > barTop && y < H - 18) return; // hidden behind the bottom bar
+      crowd.push({
+        x: x + rand(-2, 2), y: y + rand(-1.5, 1.5), team,
+        shirt: pick(shirts[team]), skin: pick(skins), ph: rand(0, 6), scarf: Math.random() < 0.3,
+      });
+    };
+    for (let y = 150, row = 0; y < PITCH.y - 96; y += 14, row++) {
+      for (let x = 6 + (row % 2) * 7; x < W; x += 14) add(x, y, x < W / 2 ? 'messi' : 'ronaldo');
     }
-    // side stands
-    for (let y = PITCH.y - 40; y < H - 40; y += 24) {
-      add(22, y, 'messi');
-      add(W - 22, y, 'ronaldo');
+    for (let y = PITCH.y - 96; y < PITCH.y + PITCH.h + 50; y += 15) {
+      for (const x of [9, 25, 41]) add(x, y, 'messi');
+      for (const x of [W - 9, W - 25, W - 41]) add(x, y, 'ronaldo');
     }
-    // lower stand
-    for (let y = PITCH.y + PITCH.h + 82, row = 0; y < H + 6; y += 20, row++) {
-      for (let x = 12 + (row % 2) * 10; x < W; x += 20) add(x, y, x < W / 2 ? 'messi' : 'ronaldo');
+    for (let y = PITCH.y + PITCH.h + 50, row = 0; y < H + 8; y += 14, row++) {
+      for (let x = 6 + (row % 2) * 7; x < W; x += 14) add(x, y, x < W / 2 ? 'messi' : 'ronaldo');
+    }
+    for (const f of crowd) {
+      if (!crowdByShirt.has(f.shirt)) crowdByShirt.set(f.shirt, []);
+      crowdByShirt.get(f.shirt).push(f);
+      if (!crowdBySkin.has(f.skin)) crowdBySkin.set(f.skin, []);
+      crowdBySkin.get(f.skin).push(f);
     }
   })();
 
@@ -760,40 +760,66 @@
   }
 
   // ---------- Static background (pre-rendered on resize) ----------
+  const runoff = () => ({ x: PITCH.x - 24, y: PITCH.y - 24, w: PITCH.w + 48, h: PITCH.h + 48 });
+
   function drawStands() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#0e1633');
-    g.addColorStop(1, '#060913');
+    g.addColorStop(0, '#0a1640');
+    g.addColorStop(0.5, '#0c1b50');
+    g.addColorStop(1, '#070f30');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    // seat rows
-    for (let y = HUD_H, i = 0; y < H; y += 20, i++) {
-      ctx.fillStyle = i % 2 ? '#1a2342' : '#141c36';
-      ctx.fillRect(0, y, W, 20);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let y = 150; y < H; y += 28) ctx.fillRect(0, y, W, 3);
+  }
+
+  // Blue walls around the run-off with a gold trim and small lamps.
+  function drawWalls() {
+    const R = runoff();
+    const wall = (x, y, w, h, vertical) => {
+      const g = vertical ? ctx.createLinearGradient(x, 0, x + w, 0) : ctx.createLinearGradient(0, y, 0, y + h);
+      g.addColorStop(0, '#0a2470');
+      g.addColorStop(0.5, '#1d4fc4');
+      g.addColorStop(1, '#0a2470');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#f2c94c';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    };
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 24;
+    wall(R.x - 38, R.y - 30, 38, R.h + 60, true);
+    wall(R.x + R.w, R.y - 30, 38, R.h + 60, true);
+    wall(R.x - 38, R.y - 30, R.w + 76, 30, false);
+    wall(R.x - 38, R.y + R.h, R.w + 76, 30, false);
+    ctx.restore();
+    ctx.save();
+    ctx.shadowColor = '#cfe3ff';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#eef6ff';
+    for (let y = R.y + 60; y < R.y + R.h - 20; y += 120) {
+      circle(R.x - 19, y, 4);
+      ctx.fill();
+      circle(R.x + R.w + 19, y, 4);
+      ctx.fill();
     }
-    // stand divider stairs
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(W / 2 - 3, HUD_H, 6, PITCH.y - 72 - HUD_H);
-    // roof shadow under the scoreboard
-    const sh = ctx.createLinearGradient(0, HUD_H, 0, HUD_H + 60);
-    sh.addColorStop(0, 'rgba(0,0,0,0.6)');
-    sh.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = sh;
-    ctx.fillRect(0, HUD_H, W, 60);
+    ctx.restore();
   }
 
   function drawLines() {
-    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 4.5;
     ctx.strokeRect(PITCH.x, PITCH.y, PITCH.w, PITCH.h);
     ctx.beginPath();
     ctx.moveTo(PITCH.x, MID_Y);
     ctx.lineTo(PITCH.x + PITCH.w, MID_Y);
     ctx.stroke();
-    circle(W / 2, MID_Y, 150);
+    circle(W / 2, MID_Y, 125);
     ctx.stroke();
-    circle(W / 2, MID_Y, 8);
+    circle(W / 2, MID_Y, 7);
     ctx.fill();
 
     for (const g of Object.values(GOALS)) {
@@ -806,20 +832,20 @@
         ctx.lineTo(W / 2 + hw, g.lineY);
         ctx.stroke();
       };
-      box(310, 240);
-      box(170, 90);
-      const spotY = g.lineY + d * 165;
+      box(280, 210);
+      box(155, 70);
+      const spotY = g.lineY + d * 140;
       circle(W / 2, spotY, 7);
       ctx.fill();
-      const a = Math.acos(75 / 150);
+      const a = Math.acos(70 / 125);
       const mid = d > 0 ? Math.PI / 2 : -Math.PI / 2;
       ctx.beginPath();
-      ctx.arc(W / 2, spotY, 150, mid - a, mid + a);
+      ctx.arc(W / 2, spotY, 125, mid - a, mid + a);
       ctx.stroke();
     }
     const corner = (x, y, a0) => {
       ctx.beginPath();
-      ctx.arc(x, y, 24, a0, a0 + Math.PI / 2);
+      ctx.arc(x, y, 22, a0, a0 + Math.PI / 2);
       ctx.stroke();
     };
     corner(PITCH.x, PITCH.y, 0);
@@ -829,75 +855,43 @@
   }
 
   function drawPitchStatic() {
-    const R = { x: PITCH.x - 28, y: PITCH.y - 28, w: PITCH.w + 56, h: PITCH.h + 56 };
-    // shadow cast by the pitch onto the stands
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 30;
-    ctx.fillStyle = '#2b7c40';
+    const R = runoff();
+    ctx.fillStyle = '#3f9b2c';
     ctx.fillRect(R.x, R.y, R.w, R.h);
-    ctx.restore();
 
-    // mowing pattern: horizontal stripes + faint vertical bands = checkerboard
-    const rows = 15;
+    // mowing stripes
+    const rows = 14;
     const sh = PITCH.h / rows;
     for (let i = 0; i < rows; i++) {
-      ctx.fillStyle = i % 2 ? '#43b25e' : '#3aa153';
+      ctx.fillStyle = i % 2 ? '#5fc23c' : '#52b333';
       ctx.fillRect(PITCH.x, PITCH.y + i * sh, PITCH.w, sh + 0.5);
-    }
-    const cols = 8;
-    const cw = PITCH.w / cols;
-    for (let j = 0; j < cols; j += 2) {
-      ctx.fillStyle = 'rgba(255,255,255,0.04)';
-      ctx.fillRect(PITCH.x + j * cw, PITCH.y, cw, PITCH.h);
     }
 
     // grass texture
-    const rnd = seeded(20260930);
-    for (let i = 0; i < 16000; i++) {
+    const rnd = seeded(20261001);
+    for (let i = 0; i < 12000; i++) {
       const x = R.x + rnd() * R.w;
       const y = R.y + rnd() * R.h;
-      ctx.fillStyle = rnd() < 0.55 ? 'rgba(10,50,15,0.12)' : 'rgba(210,255,190,0.07)';
+      ctx.fillStyle = rnd() < 0.55 ? 'rgba(20,70,10,0.10)' : 'rgba(230,255,200,0.07)';
       ctx.fillRect(x, y, 1.6, 2 + rnd() * 4);
     }
 
-    // team names painted on the grass
-    ctx.save();
-    ctx.globalAlpha = 0.1;
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    fitFont(CONFIG.teams.ronaldo.name, 700, 150);
-    ctx.fillText(CONFIG.teams.ronaldo.name, W / 2, (PITCH.y + 240 + MID_Y - 150) / 2);
-    fitFont(CONFIG.teams.messi.name, 700, 150);
-    ctx.fillText(CONFIG.teams.messi.name, W / 2, (MID_Y + 150 + PITCH.y + PITCH.h - 240) / 2);
-    ctx.restore();
-
-    // centre-circle emblem ring
-    ctx.save();
-    ctx.globalAlpha = 0.14;
-    ctx.lineWidth = 16;
-    ctx.strokeStyle = '#004D98';
-    ctx.beginPath();
-    ctx.arc(W / 2, MID_Y, 120, 0, Math.PI);
-    ctx.stroke();
-    ctx.strokeStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(W / 2, MID_Y, 120, Math.PI, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // floodlight lighting: bright centre, darker edges
-    const lg = ctx.createRadialGradient(W / 2, MID_Y, 60, W / 2, MID_Y, 950);
-    lg.addColorStop(0, 'rgba(255,255,225,0.12)');
-    lg.addColorStop(0.6, 'rgba(0,0,0,0)');
-    lg.addColorStop(1, 'rgba(0,0,0,0.28)');
+    // sunlit centre, darker edges
+    const lg = ctx.createRadialGradient(W / 2, MID_Y, 60, W / 2, MID_Y, 900);
+    lg.addColorStop(0, 'rgba(255,255,200,0.14)');
+    lg.addColorStop(0.55, 'rgba(0,0,0,0)');
+    lg.addColorStop(1, 'rgba(0,30,0,0.28)');
     ctx.fillStyle = lg;
     ctx.fillRect(R.x, R.y, R.w, R.h);
 
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 3;
+    circle(W / 2, MID_Y, 100);
+    ctx.stroke();
+
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-    ctx.shadowBlur = 4;
+    ctx.shadowColor = 'rgba(0,0,0,0.25)';
+    ctx.shadowBlur = 3;
     ctx.shadowOffsetY = 2;
     drawLines();
     ctx.restore();
@@ -912,95 +906,303 @@
     ctx.fillRect(0, 0, bg.width, bg.height);
     applyView();
     drawStands();
+    drawWalls();
     drawPitchStatic();
     ctx = mainCtx;
   }
 
   // ---------- Dynamic drawing ----------
   function drawCrowd() {
-    for (const f of crowd) {
-      const c = cheer[f.team];
-      const jump = (Math.sin(now * 12 + f.ph) * 0.5 + 0.5) * (1.5 + c * 12);
-      const y = f.y - jump;
-      ctx.fillStyle = f.shirt;
-      rr(f.x - 8, y - 1, 16, 12, 5);
+    const jump = (f) => (Math.sin(now * 12 + f.ph) * 0.5 + 0.5) * (1 + cheer[f.team] * 10);
+    ctx.save();
+    ctx.globalAlpha = 0.68; // keep the stands in the background
+    for (const [color, fans] of crowdByShirt) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      for (const f of fans) ctx.rect(f.x - 6, f.y - jump(f), 12, 10);
       ctx.fill();
-      ctx.fillStyle = f.skin;
-      circle(f.x, y - 6, 5.5);
-      ctx.fill();
-      if (f.scarf && c > 0.25) {
-        const wave = Math.sin(now * 10 + f.ph) * 2;
-        ctx.fillStyle = f.team === 'messi' ? '#A50044' : '#FFFFFF';
-        ctx.fillRect(f.x - 12, y - 20 + wave, 24, 5);
-        ctx.fillStyle = f.team === 'messi' ? '#004D98' : '#D4AF37';
-        ctx.fillRect(f.x - 3, y - 20 + wave, 6, 5);
-      }
     }
+    for (const [color, fans] of crowdBySkin) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      for (const f of fans) {
+        const y = f.y - 5 - jump(f);
+        ctx.moveTo(f.x + 4.5, y);
+        ctx.arc(f.x, y, 4.5, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    // scarves held up when their team scores
+    for (const team of ['messi', 'ronaldo']) {
+      if (cheer[team] < 0.25) continue;
+      const [c1, c2] = team === 'messi' ? ['#a50044', '#1b4fd0'] : ['#ffffff', '#f2c94c'];
+      ctx.fillStyle = c1;
+      ctx.beginPath();
+      for (const f of crowd) if (f.scarf && f.team === team) ctx.rect(f.x - 9, f.y - 17 - jump(f) + Math.sin(now * 10 + f.ph) * 2, 18, 4);
+      ctx.fill();
+      ctx.fillStyle = c2;
+      ctx.beginPath();
+      for (const f of crowd) if (f.scarf && f.team === team) ctx.rect(f.x - 2, f.y - 17 - jump(f) + Math.sin(now * 10 + f.ph) * 2, 4, 4);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Steel roof beams in the top corners.
+  function drawRoof() {
+    ctx.strokeStyle = '#1a2238';
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    for (const s of [1, -1]) {
+      const x0 = s > 0 ? 0 : W;
+      ctx.beginPath();
+      ctx.moveTo(x0, 340);
+      ctx.lineTo(x0 + s * 110, 110);
+      ctx.lineTo(x0 + s * 40, 0);
+      ctx.moveTo(x0, 210);
+      ctx.lineTo(x0 + s * 110, 110);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
   }
 
   function drawFloodlights() {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (const [x, y] of [[40, HUD_H + 10], [W - 40, HUD_H + 10], [40, H - 20], [W - 40, H - 20]]) {
-      const g = ctx.createRadialGradient(x, y, 0, x, y, 300);
-      g.addColorStop(0, 'rgba(255,250,215,0.28)');
-      g.addColorStop(0.25, 'rgba(255,250,215,0.08)');
-      g.addColorStop(1, 'rgba(255,250,215,0)');
+    for (const s of [1, -1]) {
+      const x = s > 0 ? 66 : W - 66;
+      const y = 44;
+      for (let i = 0; i < 4; i++) {
+        const a0 = 0.75 + i * 0.17;
+        const a = s > 0 ? a0 : Math.PI - a0;
+        ctx.fillStyle = 'rgba(255,255,225,0.022)';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(a - 0.045) * 1700, y + Math.sin(a - 0.045) * 1700);
+        ctx.lineTo(x + Math.cos(a + 0.045) * 1700, y + Math.sin(a + 0.045) * 1700);
+        ctx.closePath();
+        ctx.fill();
+      }
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 260);
+      g.addColorStop(0, 'rgba(255,255,240,0.7)');
+      g.addColorStop(0.15, 'rgba(220,235,255,0.28)');
+      g.addColorStop(1, 'rgba(200,220,255,0)');
       ctx.fillStyle = g;
-      ctx.fillRect(x - 300, y - 300, 600, 600);
+      ctx.fillRect(x - 260, y - 260, 520, 520);
+    }
+    ctx.restore();
+    // lamp panels
+    for (const s of [1, -1]) {
+      const x = s > 0 ? 66 : W - 66;
+      ctx.save();
+      ctx.translate(x, 44);
+      ctx.rotate(s * 0.5);
+      ctx.fillStyle = '#20283f';
+      rr(-34, -34, 68, 68, 8);
+      ctx.fill();
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          rr(-28 + i * 20, -28 + j * 20, 16, 16, 4);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawCrown(x, y, w, fill) {
+    const h = w * 0.7;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, h / 2);
+    ctx.lineTo(-w / 2, -h / 5);
+    ctx.lineTo(-w / 4, h / 8);
+    ctx.lineTo(0, -h / 2);
+    ctx.lineTo(w / 4, h / 8);
+    ctx.lineTo(w / 2, -h / 5);
+    ctx.lineTo(w / 2, h / 2);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    for (const px of [-w / 2, 0, w / 2]) {
+      circle(px, px === 0 ? -h / 2 : -h / 5, w * 0.07);
+      ctx.fill();
     }
     ctx.restore();
   }
 
-  let ledPattern = null;
-  function drawBoard(b) {
-    const messi = b.team === 'messi';
-    const len = b.vertical ? b.h : b.w;
-    const th = b.vertical ? b.w : b.h;
+  function drawMiniBall(x, y, r) {
     ctx.save();
-    rr(b.x, b.y, b.w, b.h, 5);
+    ctx.fillStyle = '#ffffff';
+    circle(x, y, r);
+    ctx.fill();
+    ctx.save();
+    circle(x, y, r);
     ctx.clip();
-    ctx.fillStyle = messi ? '#07122b' : '#11131c';
-    ctx.fillRect(b.x, b.y, b.w, b.h);
-    const flash = cheer[b.team];
-    if (flash > 0.05 && Math.sin(now * 28) > 0) {
-      ctx.fillStyle = messi ? `rgba(165,0,68,${flash})` : `rgba(212,175,55,${flash})`;
-      ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.fillStyle = '#1d1d22';
+    const penta = (px, py, size, rot) => {
+      ctx.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const a = rot + (k * Math.PI * 2) / 5 - Math.PI / 2;
+        if (k === 0) ctx.moveTo(px + Math.cos(a) * size, py + Math.sin(a) * size);
+        else ctx.lineTo(px + Math.cos(a) * size, py + Math.sin(a) * size);
+      }
+      ctx.closePath();
+      ctx.fill();
+    };
+    penta(x, y, r * 0.36, 0);
+    for (let k = 0; k < 5; k++) {
+      const a = (k * Math.PI * 2) / 5 - Math.PI / 2;
+      penta(x + Math.cos(a) * r * 0.98, y + Math.sin(a) * r * 0.98, r * 0.32, Math.PI);
     }
-    ctx.save();
-    if (b.vertical) {
-      ctx.translate(b.x + b.w, b.y);
-      ctx.rotate(Math.PI / 2);
-    } else {
-      ctx.translate(b.x, b.y);
-    }
-    const text = `${CONFIG.boardText || ''}     ★     `;
-    ctx.font = `900 ${Math.round(th * 0.68)}px ${FONT}`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    const tw = ctx.measureText(text).width || 1;
-    ctx.fillStyle = messi ? '#EDBB00' : '#FFFFFF';
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 8;
-    for (let x = -((now * 90) % tw); x < len; x += tw) ctx.fillText(text, x, th / 2 + 1);
     ctx.restore();
-    if (!ledPattern) {
-      const pc = document.createElement('canvas');
-      pc.width = 3;
-      pc.height = 3;
-      const p = pc.getContext('2d');
-      p.fillStyle = 'rgba(0,0,0,0.45)';
-      p.fillRect(2, 0, 1, 3);
-      p.fillRect(0, 2, 3, 1);
-      ledPattern = ctx.createPattern(pc, 'repeat');
-    }
-    ctx.fillStyle = ledPattern;
-    ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.restore();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#2c3654';
-    rr(b.x, b.y, b.w, b.h, 5);
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.5, r * 0.09);
+    circle(x, y, r);
     ctx.stroke();
+    ctx.restore();
+  }
+
+  // Waving cloth banner beside the top goal.
+  function drawCloth(cx, cy, w, h, tilt, team, text) {
+    const messi = team === 'messi';
+    const wave = Math.sin(now * 2.2 + cx) * 4;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(tilt);
+    if (cheer[team] > 0.05) {
+      ctx.shadowColor = messi ? '#3d7bff' : '#f2c94c';
+      ctx.shadowBlur = 34 * cheer[team];
+    }
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2);
+    ctx.quadraticCurveTo(0, -h / 2 + wave, w / 2, -h / 2);
+    ctx.lineTo(w / 2, h / 2);
+    ctx.quadraticCurveTo(0, h / 2 + wave, -w / 2, h / 2);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+    if (messi) {
+      g.addColorStop(0, '#8a1048');
+      g.addColorStop(0.35, '#1d4fc4');
+      g.addColorStop(1, '#0b2a8c');
+    } else {
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(1, '#e3e7f1');
+    }
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#f2c94c';
+    ctx.stroke();
+    const ink = messi ? '#ffffff' : '#1b2a6b';
+    drawCrown(-w / 2 + 30, wave * 0.5, 30, ink);
+    drawCrown(w / 2 - 30, wave * 0.5, 30, ink);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = ink;
+    fitFont(text, w - 120, 30, 'italic 900');
+    ctx.fillText(text, 0, 2 + wave * 0.5);
+    ctx.restore();
+  }
+
+  // Hanging pennant on the side wall.
+  function drawPennant(cx, top, team) {
+    const messi = team === 'messi';
+    const info = CONFIG.teams[team];
+    const w = 78;
+    const h = 300;
+    ctx.strokeStyle = '#c9a43a';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2 - 8, top);
+    ctx.lineTo(cx + w / 2 + 8, top);
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(cx, top);
+    const shake = cheer[team] > 0.05 ? Math.sin(now * 14) * 0.06 * cheer[team] : 0;
+    ctx.rotate(Math.sin(now * 1.4 + cx) * 0.025 + shake);
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0);
+    ctx.lineTo(w / 2, 0);
+    ctx.lineTo(w / 2, h);
+    ctx.lineTo(0, h - 34);
+    ctx.lineTo(-w / 2, h);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    if (messi) {
+      g.addColorStop(0, '#2457d6');
+      g.addColorStop(1, '#0a2580');
+    } else {
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(1, '#e6e9f2');
+    }
+    ctx.fillStyle = g;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = messi ? '#d0103a' : '#f2c94c';
+    ctx.stroke();
+    const ink = messi ? '#ffffff' : '#1b2a6b';
+    drawCrown(0, 42, 34, ink);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = ink;
+    fitFont(info.name, w - 14, 24, 'italic 900');
+    ctx.fillText(info.name, 0, 92);
+    ctx.font = `900 56px ${FONT}`;
+    ctx.fillText(info.number || '', 0, 150);
+    drawMiniBall(0, 214, 18);
+    ctx.restore();
+  }
+
+  function drawBottomBar() {
+    const y0 = PITCH.y + PITCH.h + 76;
+    const y1 = H - 22;
+    const mid = (y0 + y1) / 2;
+    roundPoly([[24, y0], [W - 24, y0], [W - 66, y1], [66, y1]], 18);
+    const g = ctx.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, '#18235a');
+    g.addColorStop(1, '#070b1f');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#f2c94c';
+    ctx.stroke();
+    roundPoly([[150, y0 + 20], [W - 150, y0 + 20], [W - 176, y1 - 18], [176, y1 - 18]], 12);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#c9a43a';
+    ctx.stroke();
+
+    const text = CONFIG.boardText || '';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    fitFont(text, 560, 34, 'italic 900');
+    const tw = ctx.measureText(text).width;
+    ctx.save();
+    ctx.shadowColor = 'rgba(242,201,76,0.7)';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#f2c94c';
+    ctx.fillText(text, W / 2, mid + 1);
+    ctx.restore();
+    drawCrown(W / 2 - tw / 2 - 34, mid, 30, '#f2c94c');
+    drawCrown(W / 2 + tw / 2 + 34, mid, 30, '#f2c94c');
+    ctx.fillStyle = '#c9a43a';
+    const lineEnd = W / 2 - tw / 2 - 64;
+    if (lineEnd > 200) {
+      ctx.fillRect(200, mid - 1.5, lineEnd - 200, 3);
+      ctx.fillRect(W - lineEnd, mid - 1.5, lineEnd - 200, 3);
+    }
+    drawMiniBall(60, y0 + 4, 30);
+    drawMiniBall(W - 60, y0 + 4, 30);
   }
 
   function drawCornerFlags() {
@@ -1389,12 +1591,12 @@
     const name = team.name;
     const tw = ctx.measureText(name).width + 30;
     rr(p.x - tw / 2, p.y + 16, tw, 38, 19);
-    ctx.fillStyle = teamFill(p.team, p.x - tw / 2, p.x + tw / 2);
+    ctx.fillStyle = p.team === 'messi' ? teamFill('messi', p.x - tw / 2, p.x + tw / 2) : '#14286b';
     ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = p.team === 'messi' ? '#EDBB00' : '#D4AF37';
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#f2c94c';
     ctx.stroke();
-    ctx.fillStyle = p.team === 'messi' ? '#FFFFFF' : '#1B2A6B';
+    ctx.fillStyle = '#FFFFFF';
     ctx.fillText(name, p.x, p.y + 36);
 
     if (celebrating && team.celebrate) {
@@ -1583,120 +1785,221 @@
     ctx.restore();
   }
 
-  function drawHUD() {
-    const bgG = ctx.createLinearGradient(0, 0, 0, HUD_H);
-    bgG.addColorStop(0, '#0a0f1f');
-    bgG.addColorStop(1, '#141d3a');
-    ctx.fillStyle = bgG;
-    ctx.fillRect(0, 0, W, HUD_H);
-    ctx.fillStyle = '#EDBB00';
-    ctx.fillRect(0, HUD_H - 4, W, 4);
+  // Polygon with rounded corners.
+  function roundPoly(pts, r) {
+    const n = pts.length;
+    const a = pts[n - 1];
+    const b = pts[0];
+    ctx.beginPath();
+    ctx.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    for (let i = 0; i < n; i++) {
+      const p = pts[i];
+      const q = pts[(i + 1) % n];
+      ctx.arcTo(p[0], p[1], q[0], q[1], r);
+    }
+    ctx.closePath();
+  }
 
-    const panel = (team, x) => {
+  // Lookalike club badges (not the official crests).
+  function drawBadge(team, cx, cy, size) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(size / 64, size / 64);
+    if (team === 'messi') {
+      const shield = () => {
+        ctx.beginPath();
+        ctx.moveTo(-28, -32);
+        ctx.lineTo(28, -32);
+        ctx.lineTo(28, 4);
+        ctx.quadraticCurveTo(26, 26, 0, 36);
+        ctx.quadraticCurveTo(-26, 26, -28, 4);
+        ctx.closePath();
+      };
+      shield();
+      ctx.fillStyle = '#f2c94c';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#6b4a00';
+      ctx.stroke();
+      ctx.save();
+      ctx.scale(0.8, 0.8);
+      shield();
+      ctx.clip();
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = i % 2 ? '#0b2a8c' : '#a50044';
+        ctx.fillRect(-30 + i * 10, -14, 10, 52);
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-30, -34, 60, 20);
+      ctx.restore();
+      drawMiniBall(0, -19, 7);
+    } else {
+      circle(0, 6, 26);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#f2c94c';
+      ctx.stroke();
+      circle(0, 6, 19);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#1b2a6b';
+      ctx.stroke();
+      ctx.fillStyle = '#1b2a6b';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `900 24px ${FONT}`;
+      ctx.fillText(CONFIG.teams.ronaldo.number || '7', 0, 8);
+      drawCrown(0, -24, 34, '#f2c94c');
+    }
+    ctx.restore();
+  }
+
+  function drawHUD() {
+    const left = timeLeft();
+    const running = match.phase === 'running';
+    const urgent = running && left <= 10000;
+
+    for (const team of ['messi', 'ronaldo']) {
       const messi = team === 'messi';
       const disp = Math.max(0, serverScores[team] - pending(team));
       if (disp > shown[team]) pop[team] = 1;
       shown[team] = disp;
 
-      rr(x, 14, 370, 150, 26);
-      ctx.fillStyle = teamFill(team, x, x + 370);
+      const pts = messi
+        ? [[118, 12], [442, 12], [416, 138], [96, 138]]
+        : [[638, 12], [962, 12], [984, 138], [664, 138]];
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 4;
+      roundPoly(pts, 16);
+      const g = ctx.createLinearGradient(0, 12, 0, 138);
+      g.addColorStop(0, messi ? '#2f6cf0' : '#ffffff');
+      g.addColorStop(1, messi ? '#0a2580' : '#d6dbe8');
+      ctx.fillStyle = g;
       ctx.fill();
+      ctx.restore();
+      ctx.save();
+      roundPoly(pts, 16);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      ctx.fillRect(0, 12, W, 52);
+      ctx.restore();
+      roundPoly(pts, 16);
       ctx.lineWidth = 5;
-      ctx.strokeStyle = messi ? '#EDBB00' : '#D4AF37';
+      ctx.strokeStyle = '#f2c94c';
       ctx.stroke();
 
-      const cx = x + 185;
-      const ink = messi ? '#FFFFFF' : '#1B2A6B';
+      drawBadge(team, messi ? 168 : W - 168, 76, 80);
+
+      const tx = messi ? 300 : W - 300;
+      const ink = messi ? '#FFFFFF' : '#14286b';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = ink;
-      fitFont(CONFIG.teams[team].name, 330, 34);
-      ctx.fillText(CONFIG.teams[team].name, cx, 44);
-
+      fitFont(CONFIG.teams[team].name, 220, 34);
+      ctx.fillText(CONFIG.teams[team].name, tx, 42);
       ctx.save();
-      ctx.translate(cx, 110);
+      ctx.translate(tx, 100);
       const s = 1 + pop[team] * 0.35;
       ctx.scale(s, s);
-      fitFont(String(disp), 330, 84);
-      outlinedText(String(disp), 0, 0, ink, messi ? '#15161c' : '#D4AF37', 6);
+      fitFont(String(disp), 220, 72);
+      outlinedText(String(disp), 0, 0, ink, messi ? '#0a1a5a' : '#c9a43a', 5);
       ctx.restore();
 
-      // wins + streak
-      rr(x, 176, 370, 58, 29);
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      // wins (+ streak)
+      const wp = messi
+        ? [[142, 146], [402, 146], [390, 192], [130, 192]]
+        : [[678, 146], [938, 146], [950, 192], [690, 192]];
+      roundPoly(wp, 10);
+      ctx.fillStyle = 'rgba(8,16,48,0.94)';
       ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = messi ? '#3d6fd1' : '#D4AF37';
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = messi ? '#3b62c9' : '#c9a43a';
       ctx.stroke();
+      const wins = match.wins[team] || 0;
+      const main = `🏆 ${wins} ${wins === 1 ? 'WIN' : 'WINS'}`;
+      const streak = match.streak.team === team && match.streak.count >= 2 ? `   🔥 x${match.streak.count}` : '';
+      const cx = messi ? 266 : W - 266;
+      let size = 26;
+      ctx.font = `900 ${size}px ${FONT}`;
+      let total = ctx.measureText(main + streak).width;
+      if (total > 236) {
+        size = Math.floor((size * 236) / total);
+        ctx.font = `900 ${size}px ${FONT}`;
+        total = ctx.measureText(main + streak).width;
+      }
       ctx.textAlign = 'left';
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = `900 28px ${FONT}`;
-      const wins = match.wins[team] || 0;
-      const winsText = `🏆 ${wins} ${wins === 1 ? 'WIN' : 'WINS'}`;
-      ctx.fillText(winsText, x + 20, 206);
-      if (match.streak.team === team && match.streak.count >= 2) {
-        const room = 370 - 40 - ctx.measureText(winsText).width - 16;
+      const x0 = cx - total / 2;
+      ctx.fillText(main, x0, 170);
+      if (streak) {
         ctx.save();
-        ctx.textAlign = 'right';
-        const glow = 0.5 + 0.5 * Math.sin(now * 6);
         ctx.shadowColor = '#ff7a00';
-        ctx.shadowBlur = 10 + glow * 14;
+        ctx.shadowBlur = 8 + 10 * (0.5 + 0.5 * Math.sin(now * 6));
         ctx.fillStyle = '#ffb13b';
-        const streakText = `🔥 ${match.streak.count} STREAK`;
-        fitFont(streakText, room, 28);
-        ctx.fillText(streakText, x + 352, 206);
+        ctx.fillText(streak, x0 + ctx.measureText(main).width, 170);
         ctx.restore();
       }
-    };
-    panel('messi', 16);
-    panel('ronaldo', W - 16 - 370);
+    }
 
     // timer
-    const left = timeLeft();
-    const running = match.phase === 'running';
-    const urgent = running && left <= 10000;
-    rr(396, 14, 288, 150, 26);
-    ctx.fillStyle = urgent && Math.sin(now * 10) > 0 ? '#3a0710' : '#05070d';
+    const cp = [[432, 8], [648, 8], [678, 38], [656, 134], [424, 134], [402, 38]];
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 18;
+    roundPoly(cp, 10);
+    const tg = ctx.createLinearGradient(0, 8, 0, 134);
+    tg.addColorStop(0, urgent && Math.sin(now * 10) > 0 ? '#4a0812' : '#1d1d24');
+    tg.addColorStop(1, '#000000');
+    ctx.fillStyle = tg;
     ctx.fill();
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = urgent ? '#ff4d4d' : '#EDBB00';
+    ctx.restore();
+    roundPoly(cp, 10);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = urgent ? '#ff4d4d' : '#f2c94c';
     ctx.stroke();
 
     const label = {
       ready: 'KICK-OFF SOON',
       running: 'TIME LEFT',
-      paused: '⏸ PAUSED',
+      paused: 'PAUSED',
       intermission: 'FULL TIME',
     }[match.phase] || '';
     ctx.textAlign = 'center';
-    ctx.fillStyle = match.phase === 'paused' ? '#ff9a3c' : '#EDBB00';
-    fitFont(label, 250, 24, '800');
-    ctx.fillText(label, W / 2, 44);
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = match.phase === 'paused' ? '#ff9a3c' : '#f2c94c';
+    fitFont(label, 180, 22);
+    ctx.fillText(label, W / 2, 34);
+    const lw = ctx.measureText(label).width;
+    ctx.fillRect(W / 2 - lw / 2 - 30, 33, 18, 3);
+    ctx.fillRect(W / 2 + lw / 2 + 12, 33, 18, 3);
 
     const clock = match.phase === 'intermission' ? '0:00' : formatTime(left);
     const blinkOff = match.phase === 'paused' && Math.sin(now * 5) < -0.3;
     if (!blinkOff) {
       ctx.save();
-      ctx.translate(W / 2, 108);
+      ctx.translate(W / 2, 90);
       if (urgent) {
-        const s = 1 + 0.08 * Math.max(0, Math.sin(now * 12));
-        ctx.scale(s, s);
+        const sc = 1 + 0.08 * Math.max(0, Math.sin(now * 12));
+        ctx.scale(sc, sc);
       }
-      fitFont(clock, 250, 76);
+      fitFont(clock, 220, 76);
       outlinedText(clock, 0, 0, urgent ? '#ff4d4d' : '#FFFFFF', '#000000', 4);
       ctx.restore();
     }
 
-    rr(396, 176, 288, 58, 29);
-    ctx.fillStyle = 'rgba(237,187,0,0.14)';
+    const rp = [[452, 144], [628, 144], [650, 168], [628, 192], [452, 192], [430, 168]];
+    roundPoly(rp, 6);
+    ctx.fillStyle = '#0a0a12';
     ctx.fill();
     ctx.lineWidth = 3;
-    ctx.strokeStyle = '#EDBB00';
+    ctx.strokeStyle = '#f2c94c';
     ctx.stroke();
-    ctx.fillStyle = '#EDBB00';
+    ctx.fillStyle = '#f2c94c';
     const roundText = match.phase === 'intermission' ? `NEXT: ROUND ${match.round}` : `ROUND ${match.round}`;
-    fitFont(roundText, 250, 28);
-    ctx.fillText(roundText, W / 2, 206);
+    fitFont(roundText, 190, 26);
+    ctx.fillText(roundText, W / 2, 169);
   }
 
   // ---------- Frame loop ----------
@@ -1726,8 +2029,13 @@
     ctx.clip();
 
     drawCrowd();
+    drawRoof();
     drawFloodlights();
-    for (const b of BOARDS) drawBoard(b);
+    drawCloth(228, 368, 300, 58, -0.03, 'messi', `TEAM ${CONFIG.teams.messi.name}`);
+    drawCloth(W - 228, 368, 300, 58, 0.03, 'ronaldo', `TEAM ${CONFIG.teams.ronaldo.name}`);
+    drawPennant(50, 520, 'messi');
+    drawPennant(W - 50, 520, 'ronaldo');
+    drawBottomBar();
     drawCornerFlags();
     drawNet(GOALS.top);
     drawFrame(GOALS.top);
