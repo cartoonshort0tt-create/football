@@ -542,7 +542,6 @@
         banner = { team, text: c.n > 1 ? `GOAL x${c.n}!` : 'GOAL!', t: 0, big: false };
       }
     }
-    Sound.goal(b.value > 1);
 
     const p = players[team];
     const o = players[OPP[team]];

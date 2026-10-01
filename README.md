@@ -15,7 +15,7 @@ the other goal.
   and a **FULL TIME** winner card. The next round starts automatically after 12 seconds.
 - **Win count + winning streak** (🏆 3 WINS · 🔥 3 STREAK) under each team.
 - Stadium look: angled scoreboard with club-style badges, floodlights, team banners and hanging pennants, gold bottom bar, cheering fans waving scarves.
-- Goal banners, combos (`GOAL x5!`), confetti, crowd noise, "SIUUU!" celebrations.
+- Goal banners, combos (`GOAL x5!`), confetti, "SIUUU!" celebrations (no sound when the ball hits the net).
 - Score, wins and streak are saved, so restarting the PC keeps them.
 
 ## Setup (one time)
