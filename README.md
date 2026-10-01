@@ -45,8 +45,20 @@ the other goal.
 3. **TikTok Live Studio** — add a *Window capture* (or *Game capture*) of that Chrome window.
    The game is designed for **portrait 9:16** (1080×1920), so use a portrait/vertical
    scene. Enable audio capture if you want the crowd sounds on stream.
-4. **Phone** — connect to the same Wi-Fi and open the `/control` address. Add it to your
-   home screen for quick access.
+4. **Phone** — connect to the same Wi-Fi and open the `/control` address (it's also shown on
+   the game's Start screen). Type it exactly, including `http://`. Add it to your home screen.
+
+### Phone can't open the controller?
+
+The game works on the PC but the phone just loads forever / "can't reach this page":
+
+1. Double-click **`allow-phone.bat`** and click **Yes** on the admin prompt. It opens the
+   game's port in Windows Firewall and deletes old Node.js "block" rules (Windows creates
+   these if the firewall pop-up was ever cancelled — they silently block the phone).
+2. Restart `start.bat` and use the **first** address it prints (`>>>`), usually `192.168.x.x`.
+3. Still nothing? Make sure the phone is on the same Wi-Fi (not mobile data, not a
+   *guest* network — guest Wi-Fi blocks devices from seeing each other), and that any
+   antivirus with its own firewall (Avast, McAfee, Norton…) allows Node.js.
 
 ## Using the phone controller
 
@@ -116,5 +128,6 @@ public/game.js       game engine & drawing
 public/control.html  phone controller
 public/control.js
 start.bat            double-click launcher for Windows
+allow-phone.bat      double-click if the phone can't open the controller (firewall fix)
 update.bat           double-click to download the latest version
 ```

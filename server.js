@@ -389,6 +389,9 @@ const server = http.createServer(async (req, res) => {
     if (route === 'GET /events') return openStream(req, res);
     if (route === 'GET /api/config') return json(res, 200, publicConfig());
     if (route === 'GET /api/state') return json(res, 200, snapshot());
+    if (route === 'GET /api/info') {
+      return json(res, 200, { controlUrls: lanAddresses().map((a) => `http://${a.address}:${PORT}/control`) });
+    }
     if (route === 'POST /api/spawn') return json(res, 200, spawn(await readJson(req)));
     if (route === 'POST /api/undo') return json(res, 200, undo());
     if (route === 'POST /api/reset') return json(res, 200, reset());
@@ -403,14 +406,22 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// LAN addresses, best guess first: real Wi-Fi/Ethernet adapters with home-network
+// addresses (192.168.x.x etc.) before VPN / VirtualBox / WSL / Hyper-V adapters.
+const VIRTUAL_ADAPTER = /virtual|vbox|vmware|vethernet|wsl|hyper-v|docker|loopback|tailscale|zerotier|hamachi|vpn|tap|tun|bluetooth/i;
+
 function lanAddresses() {
   const out = [];
-  for (const list of Object.values(os.networkInterfaces())) {
+  for (const [name, list] of Object.entries(os.networkInterfaces())) {
     for (const a of list || []) {
-      if (a.family === 'IPv4' && !a.internal) out.push(a.address);
+      if (a.family !== 'IPv4' || a.internal || a.address.startsWith('169.254.')) continue;
+      const virtual = VIRTUAL_ADAPTER.test(name);
+      const home = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a.address);
+      const wifi = /wi-?fi|wlan|wireless/i.test(name);
+      out.push({ name, address: a.address, virtual, score: (virtual ? 0 : 4) + (home ? 2 : 0) + (wifi ? 1 : 0) });
     }
   }
-  return out;
+  return out.sort((x, y) => y.score - x.score);
 }
 
 server.on('error', (err) => {
@@ -430,11 +441,21 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`  Game screen (open on this PC):  http://localhost:${PORT}`);
   const ips = lanAddresses();
   if (ips.length) {
-    console.log('  Phone control (same Wi-Fi):');
-    for (const ip of ips) console.log(`      http://${ip}:${PORT}/control`);
+    console.log('');
+    console.log('  Phone control (phone on the SAME Wi-Fi, type it exactly, with http://):');
+    console.log(`      >>>  http://${ips[0].address}:${PORT}/control   (${ips[0].name})`);
+    const others = ips.slice(1);
+    if (others.length) {
+      console.log('  If that one does not open, try:');
+      for (const ip of others) {
+        console.log(`           http://${ip.address}:${PORT}/control   (${ip.name}${ip.virtual ? ', probably virtual' : ''})`);
+      }
+    }
   } else {
-    console.log(`  Phone control: http://<this-pc-ip>:${PORT}/control`);
+    console.log('  No network found - is this PC connected to Wi-Fi or a cable?');
   }
+  console.log('');
+  console.log('  Phone cannot connect? Double-click allow-phone.bat (fixes Windows Firewall).');
   console.log('');
   console.log(`  Current score: ${config.teams.messi.name} ${state.scores.messi} - ${state.scores.ronaldo} ${config.teams.ronaldo.name}`);
   console.log(`  Wins: ${config.teams.messi.name} ${match.wins.messi} - ${match.wins.ronaldo} ${config.teams.ronaldo.name}   (round ${match.round}, ${Math.round(match.duration / 1000)}s)`);

@@ -17,6 +17,7 @@
       color: #fff; background: linear-gradient(135deg, #004D98, #A50044); box-shadow: 0 0 0 4px #EDBB00;
     }
     #start p { margin: 0; max-width: 420px; line-height: 1.5; }
+    #phoneUrl b { display: block; font-size: 22px; color: #f2c94c; user-select: all; }
     body.started #start { display: none; }
   </style>
 </head>
@@ -27,7 +28,19 @@
     <p>Click to start (turns the sound on).<br>F = fullscreen · M = mute<br>
       S = start / pause timer · E = end round · R = reset timer<br>
       Test: 1 / 2 = 1 coin for Messi / Ronaldo, Q / W = 10 coins</p>
+    <p id="phoneUrl"></p>
   </div>
+  <script>
+    fetch('/api/info').then((r) => r.json()).then((info) => {
+      const urls = info.controlUrls || [];
+      if (!urls.length) return;
+      const p = document.getElementById('phoneUrl');
+      p.textContent = 'Phone controller (same Wi-Fi):';
+      const b = document.createElement('b');
+      b.textContent = urls[0];
+      p.appendChild(b);
+    }).catch(() => {});
+  </script>
   <script src="/game.js"></script>
 </body>
 </html>
